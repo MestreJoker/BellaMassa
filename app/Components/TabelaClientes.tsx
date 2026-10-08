@@ -13,6 +13,10 @@ interface ClienteProps {
     status: string
 }
 
+interface TabelaClientesProps {
+    informarClique: (idCliente: number) => void
+}
+
 function obterIniciais(nome: string) {
     const partes = nome.trim().split(" ")
     if (partes.length === 0) return "C"
@@ -35,7 +39,7 @@ function obterCorAvatar(id: number) {
 }
 
 
-export default function TabelaClientes() {
+export default function TabelaClientes(props: TabelaClientesProps) {
     const [clientes, setClientes] = useState<ClienteProps[]>([])
     const [carregando, setCarregando] = useState(true)
     const [termoBusca, setTermoBusca] = useState("")
@@ -71,8 +75,10 @@ export default function TabelaClientes() {
     function selecionarLinha(idCliente: number){
         if (idCliente != clienteSelecionado){
             setClienteSelecionado(idCliente)
+            props.informarClique(idCliente)
         }
         else{
+            props.informarClique(0)
             setClienteSelecionado(0)
         }
     }
