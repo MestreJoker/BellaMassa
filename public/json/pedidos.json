@@ -1,0 +1,33 @@
+[
+  {
+    "idPedido": 1,
+    "idCliente": 1,
+    "dataPedido": "2026-09-15T14:32:00",
+    "itens": [
+      {
+        "idItemPizza": 1,
+        "tipo": "Pizza",
+        "tamanho": "Média",
+        "sabores": ["Calabresa", "Frango"],
+        "borda": "Catupiry",
+        "adicionais": ["Bacon"],
+        "quantidade": 1,
+        "precoTotalItem": 58.90
+      },
+      {
+        "idItemBebida": 9,
+        "tipo": "Bebida",
+        "nome": "Coca-Cola 2L",
+        "quantidade": 1,
+        "precoTotalItem": 12.00
+      }
+    ],
+    "subtotal": 70.90,
+    "taxaEntrega": 7.00,
+    "desconto": 5.00,
+    "total": 72.90,
+    "tipoEntrega": "Entrega",
+    "formaPagamento": "Pix",
+    "status": "Em andamento"
+  }
+]

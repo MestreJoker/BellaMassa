@@ -23,7 +23,7 @@ export default function Home() {
       <BarraLateral paginaAtual={paginaAtual} informarPaginaAtual={receberPaginaAtual}/>
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="p-3 bg-[#ebf0f6] flex-1">
+        <main className="p-3 bg-[#ebf0f6] flex-1 overflow-hidden">
             {paginaAtual == 0 && <Dashboard />}
             {paginaAtual == 1 && <Pedido />}
             {paginaAtual == 2 && <Clientes />}

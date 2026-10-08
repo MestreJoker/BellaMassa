@@ -1,0 +1,26 @@
+[
+  {
+    "idTamanho": 1,
+    "nome": "Pequena",
+    "cm": 25,
+    "precoBase": 29.90
+  },
+  {
+    "idTamanho": 2,
+    "nome": "Média",
+    "cm": 30,
+    "precoBase": 39.90
+  },
+  {
+    "idTamanho": 3,
+    "nome": "Grande",
+    "cm": 40,
+    "precoBase": 59.90
+  },
+  {
+    "idTamanho": 4,
+    "nome": "Gigante",
+    "cm": 45,
+    "precoBase": 69.90
+  }
+]

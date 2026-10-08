@@ -1,0 +1,98 @@
+[
+  {
+    "idItem": 1,
+    "idCategoria": 1,
+    "nome": "Calabresa",
+    "descricao": "Molho de tomate, mussarela, calabresa e orégano.",
+    "preco": 39.90,
+    "imagem": "calabresa.png"
+  },
+  {
+    "idItem": 2,
+    "idCategoria": 1,
+    "nome": "Frango com Catupiry",
+    "descricao": "Molho de tomate, frango desfiado, catupiry e orégano.",
+    "preco": 44.90,
+    "imagem": "frango_catupiry.png"
+  },
+  {
+    "idItem": 3,
+    "idCategoria": 1,
+    "nome": "Portuguesa",
+    "descricao": "Molho de tomate, mussarela, presunto, ovo, cebola, tomate e orégano.",
+    "preco": 42.90,
+    "imagem": "portuguesa.png"
+  },
+  {
+    "idItem": 4,
+    "idCategoria": 1,
+    "nome": "4 Queijos",
+    "descricao": "Molho de tomate, mussarela, provolone, parmesão e orégano.",
+    "preco": 46.90,
+    "imagem": "4_queijos.png"
+  },
+  {
+    "idItem": 5,
+    "idCategoria": 1,
+    "nome": "Frango c/ Requeijão",
+    "descricao": "Molho de tomate, frango desfiado, requeijão e orégano.",
+    "preco": 44.90,
+    "imagem": "frango_requeijao.png"
+  },
+  {
+    "idItem": 6,
+    "idCategoria": 1,
+    "nome": "Vegetariana",
+    "descricao": "Molho de tomate, mussarela, palmito, milho, ervilha, tomate e orégano.",
+    "preco": 41.90,
+    "imagem": "vegetariana.png"
+  },
+  {
+    "idItem": 7,
+    "idCategoria": 1,
+    "nome": "Napolitana",
+    "descricao": "Molho de tomate, mussarela, tomate, manjericão e orégano.",
+    "preco": 39.90,
+    "imagem": "napolitana.png"
+  },
+  {
+    "idItem": 8,
+    "idCategoria": 1,
+    "nome": "Chocolate",
+    "descricao": "Creme de chocolate, morango e açúcar.",
+    "preco": 38.90,
+    "imagem": "chocolate.png"
+  },
+  {
+    "idItem": 9,
+    "idCategoria": 2,
+    "nome": "Coca-Cola 2L",
+    "descricao": "Refrigerante em garrafa pet de 2 litros.",
+    "preco": 12.00,
+    "imagem": "coca_2l.png"
+  },
+  {
+    "idItem": 10,
+    "idCategoria": 3,
+    "nome": "Borda Catupiry",
+    "descricao": "Borda recheada com Catupiry original.",
+    "preco": 8.00,
+    "imagem": "borda_catupiry.png"
+  },
+  {
+    "idItem": 11,
+    "idCategoria": 4,
+    "nome": "Bacon Adicional",
+    "descricao": "Porção extra de bacon crocante.",
+    "preco": 5.00,
+    "imagem": "bacon.png"
+  },
+  {
+    "idItem": 12,
+    "idCategoria": 4,
+    "nome": "Cebola Adicional",
+    "descricao": "Porção extra de cebola roxa fatiada.",
+    "preco": 2.00,
+    "imagem": "cebola.png"
+  }
+]

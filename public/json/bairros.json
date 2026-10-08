@@ -1,0 +1,34 @@
+[
+    {
+        "idBairro": 1,
+        "nome": "Guianazes"
+    },
+    {
+        "idBairro": 2,
+        "nome": "Itaquera"
+    },
+    {
+        "idBairro": 3,
+        "nome": "Mooca"
+    },
+    {
+        "idBairro": 4,
+        "nome": "Itaim Paulista"
+    },
+    {
+        "idBairro": 5,
+        "nome": "São Mateus"
+    },
+    {
+        "idBairro": 6,
+        "nome": "José Bonifácio"
+    },
+    {
+        "idBairro": 7,
+        "nome": "Aricanduva"
+    },
+    {
+        "idBairro": 8,
+        "nome": "Vila Matilde"
+    }
+]

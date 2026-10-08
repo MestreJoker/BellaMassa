@@ -24,7 +24,7 @@ export default function Dashboard() {
                     </p>
                 </div>
             </div>
-            <ConteudoCardsDashboard />
+            <ConteudoCardsDashboard pagina="dashboard" valor1={12}/>
         </div>
     )
 }
