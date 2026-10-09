@@ -144,24 +144,25 @@ export default function TabelaClientes(props: TabelaClientesProps) {
                             </tr>
                         ) : (
                             clientesFiltrados.map((item) => (
-                                <tr key={item.idCliente} className={`transition-colors  ${item.idCliente == clienteSelecionado ? (`bg-red-500`) : (`hover:bg-slate-50/60`)}`}
+                                <tr key={item.idCliente} className={`transition-colors cursor-pointer ${item.idCliente == clienteSelecionado ? (`bg-[#ca1921] text-white`) : (`hover:bg-slate-50/60 text-slate-600`)}`}
                                 onClick={() => selecionarLinha(item.idCliente)}>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-3">
-                                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${obterCorAvatar(item.idCliente)}`}>
+                                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${obterCorAvatar(item.idCliente)}
+                                            border border-white`}>
                                                 {obterIniciais(item.nome)}
                                             </span>
-                                            <span className="font-medium text-slate-800">{item.nome}</span>
+                                            <span className="font-medium">{item.nome}</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                                    <td className="px-6 py-4 whitespace-nowrap ">
                                         <div className="inline-flex items-center gap-2">
-                                            <FontAwesomeIcon icon={faWhatsapp} className="text-emerald-600 text-base" />
+                                            <FontAwesomeIcon icon={faWhatsapp} className={` text-base ${clienteSelecionado == item.idCliente ? (`text-white`) : ('text-emerald-600')}`} />
                                             <span>{item.telefone}</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-slate-600">{item.endereco}</td>
-                                    <td className="px-6 py-4 text-slate-600">{item.bairro}</td>
+                                    <td className="px-6 py-4">{item.endereco}</td>
+                                    <td className="px-6 py-4">{item.bairro}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
                                             item.status === "Ativo"
