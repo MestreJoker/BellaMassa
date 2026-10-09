@@ -1,8 +1,12 @@
 import ConteudoCardsDashboard from "../Widgets/ConteudoCardsDashboard";
+import GraficoMovimentoPedidos from "../Components/GraficoMovimentoPedidos";
+import GraficoPedidosPorTipo from "../Components/GraficoPedidosPorTipo";
+import CardReceitaDia from "../Components/CardReceitaDia";
+import TabelaPedidosRecentes from "../Components/TabelaPedidosRecentes";
 
 export default function Dashboard() {
     return (
-        <div>
+        <div className="flex flex-col gap-5">
             <div className="relative w-full h-40 rounded-xl overflow-hidden shadow-lg bg-[#12161c]">
                 {/* Container da imagem com o gradiente de transição para o lado esquerdo */}
                 <div
@@ -24,7 +28,24 @@ export default function Dashboard() {
                     </p>
                 </div>
             </div>
+            
             <ConteudoCardsDashboard pagina="dashboard" valor1={12}/>
+
+            {/* Seção dos gráficos e receita do dia */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div className="lg:col-span-2 flex flex-col">
+                    <GraficoMovimentoPedidos />
+                </div>
+                <div className="flex flex-col gap-5">
+                    <GraficoPedidosPorTipo />
+                    <CardReceitaDia />
+                </div>
+            </div>
+
+            {/* Tabela de pedidos recentes na parte inferior */}
+            <div className="w-full">
+                <TabelaPedidosRecentes />
+            </div>
         </div>
     )
 }

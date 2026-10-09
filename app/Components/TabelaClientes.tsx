@@ -9,8 +9,13 @@ interface ClienteProps {
     nome: string
     telefone: string
     endereco: string
-    bairro: string
+    idBairro: number
     status: string
+}
+
+interface BairroProps {
+    idBairro: number
+    nome: string
 }
 
 interface TabelaClientesProps {
@@ -38,19 +43,23 @@ function obterCorAvatar(id: number) {
     return coresAvatares[id % coresAvatares.length]
 }
 
-
 export default function TabelaClientes(props: TabelaClientesProps) {
     const [clientes, setClientes] = useState<ClienteProps[]>([])
+    const [bairros, setBairros] = useState<BairroProps[]>([])
     const [carregando, setCarregando] = useState(true)
     const [termoBusca, setTermoBusca] = useState("")
-    const [filtroStatus, setFiltroStatus] = useState("Todos") // "Todos", "Ativo", "Não Ativo"
+    const [filtroStatus, setFiltroStatus] = useState("Todos") // "Todos", "Ativo", "Inativo"
     const [clienteSelecionado, setClienteSelecionado] = useState(0)
 
     useEffect(() => {
         async function resgatarDados() {
             try {
-                const response = await Axios.get<ClienteProps[]>("/json/clientes.json")
-                setClientes(response.data)
+                const [responseClientes, responseBairros] = await Promise.all([
+                    Axios.get<ClienteProps[]>("/json/clientes.json"),
+                    Axios.get<BairroProps[]>("/json/bairros.json")
+                ])
+                setClientes(responseClientes.data)
+                setBairros(responseBairros.data)
             } finally {
                 setCarregando(false)
             }
@@ -58,18 +67,26 @@ export default function TabelaClientes(props: TabelaClientesProps) {
         resgatarDados()
     }, [])
 
-    // Lógica de filtragem por busca e por status
+    // Função para buscar o nome do bairro pelo idBairro
+    function obterNomeBairro(idBairro: number) {
+        const bairroEncontrado = bairros.find((b) => b.idBairro === idBairro)
+        return bairroEncontrado ? bairroEncontrado.nome : ""
+    }
+
+    // Lógica de filtragem considerando o nome real do bairro resolvido
     const clientesFiltrados = clientes.filter((item) => {
         const termo = termoBusca.toLowerCase()
+        const nomeBairro = obterNomeBairro(item.idBairro).toLowerCase()
+
         const correspondeBusca =
-            item.nome.toLowerCase().includes(termo) ||
-            item.telefone.toLowerCase().includes(termo) ||
-            item.endereco.toLowerCase().includes(termo) ||
-            item.bairro.toLowerCase().includes(termo) ||
-            item.status.toLowerCase().includes(termo)
+            String(item.nome || "").toLowerCase().includes(termo) ||
+            String(item.telefone || "").toLowerCase().includes(termo) ||
+            String(item.endereco || "").toLowerCase().includes(termo) ||
+            nomeBairro.includes(termo) ||
+            String(item.status || "").toLowerCase().includes(termo)
 
         if (filtroStatus === "Todos") return correspondeBusca
-        return correspondeBusca && item.status.toLowerCase() === filtroStatus.toLowerCase()
+        return correspondeBusca && String(item.status || "").toLowerCase() === filtroStatus.toLowerCase()
     })
 
     function selecionarLinha(idCliente: number){
@@ -162,7 +179,8 @@ export default function TabelaClientes(props: TabelaClientesProps) {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">{item.endereco}</td>
-                                    <td className="px-6 py-4">{item.bairro}</td>
+                                    {/* Exibindo o nome do bairro resolvido pelo ID */}
+                                    <td className="px-6 py-4">{obterNomeBairro(item.idBairro)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
                                             item.status === "Ativo"
