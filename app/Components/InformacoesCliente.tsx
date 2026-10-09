@@ -13,8 +13,14 @@ interface ClienteProps {
     nome: string
     telefone: string
     endereco: string
-    bairro: string
+    idBairro: number
+    bairro?: string
     status: string
+}
+
+interface BairroProps {
+    idBairro: number
+    nome: string
 }
 
 function obterIniciais(nome: string) {
@@ -44,10 +50,16 @@ export default function InfomacoesCliente(props: InfomacoesClienteProps) {
     useEffect(() => {
         async function resgatarDados() {
             try {
-                const response = await Axios.get(`/json/clientes.json`)
-                const dados: ClienteProps[] = response.data
+                const [responseClientes, responseBairros] = await Promise.all([
+                    Axios.get<ClienteProps[]>("/json/clientes.json"),
+                    Axios.get<BairroProps[]>("/json/bairros.json")
+                ])
+                const dados = responseClientes.data
                 const cliente = dados.find(item => item.idCliente === props.idCliente)
-                setClienteSelecionado(cliente)
+                setClienteSelecionado(cliente ? {
+                    ...cliente,
+                    bairro: responseBairros.data.find(bairro => bairro.idBairro === cliente.idBairro)?.nome ?? ""
+                } : undefined)
             }
             catch (erro) {
                 console.log(erro)
@@ -59,20 +71,20 @@ export default function InfomacoesCliente(props: InfomacoesClienteProps) {
     }, [props.idCliente])
 
     return (
-        <div className="flex-1 rounded-xl h-full p-6 bg-white border border-slate-200 shadow-sm flex flex-col font-sans overflow-y-auto">
+        <div className="w-full min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col font-sans sm:p-6 xl:h-full xl:flex-1 xl:overflow-y-auto">
             {props.idCliente !== 0 && clienteSelecionado ? (
-                <div className="flex flex-col h-full justify-between gap-6">
+                <div className="flex min-w-0 flex-col justify-between gap-6 xl:h-full">
                     <div>
                         {/* Título do Card */}
                         <h2 className="text-lg font-bold text-slate-800 mb-6">Detalhes do Cliente</h2>
 
                         {/* Perfil (Avatar + Nome + Status) */}
-                        <div className="flex items-center gap-4 mb-6">
+                        <div className="mb-6 flex flex-wrap items-center gap-3 sm:gap-4">
                             <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-base font-bold shadow-sm ${obterCorAvatar(clienteSelecionado.idCliente)}`}>
                                 {obterIniciais(clienteSelecionado.nome)}
                             </span>
                             <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-2">
+                                <div className="flex min-w-0 flex-wrap items-center gap-2">
                                     <h3 className="text-lg font-bold text-slate-900">{clienteSelecionado.nome}</h3>
                                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                                         clienteSelecionado.status === "Ativo"
@@ -87,7 +99,7 @@ export default function InfomacoesCliente(props: InfomacoesClienteProps) {
 
                         {/* Informações de Contato e Endereço */}
                         <div className="space-y-4 mb-8 text-sm text-slate-600 border-b border-slate-100 pb-6">
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                                 <FontAwesomeIcon icon={faPhone} className="text-slate-400 text-sm w-4" />
                                 <span className="font-medium text-slate-700">{clienteSelecionado.telefone}</span>
                                 <FontAwesomeIcon icon={faWhatsapp} className="text-emerald-600 text-base ml-1" />
@@ -150,7 +162,7 @@ export default function InfomacoesCliente(props: InfomacoesClienteProps) {
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 p-6 h-full text-slate-400 flex flex-col items-center justify-center gap-2">
+                <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-6 text-slate-400 xl:min-h-0 xl:flex-1">
                     <FontAwesomeIcon icon={faUser} className="text-2xl text-slate-300" />
                     <p className="text-sm font-medium text-slate-400">Nenhum cliente selecionado</p>
                 </div>

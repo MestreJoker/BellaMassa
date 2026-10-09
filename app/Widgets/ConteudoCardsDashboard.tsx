@@ -1,4 +1,4 @@
-import { faCar, faClock, faLocationDot, faMapLocation, faMapMarked, faPhone, faUser } from "@fortawesome/free-solid-svg-icons"
+import { faCar, faClock, faLocationDot, faPhone, faUser } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import CardDashboard from "../Components/CardDahsboard"
 
@@ -54,7 +54,7 @@ export default function ConteudoCardsDashboard(props: ConteudoCardsDashboardProp
         },
     ]
     return (
-        <div className="flex gap-3 mt-3">
+        <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4">
             {props.pagina == "dashboard" ? (
                 <>
                     {cardsDashboard.map((item, index) => {

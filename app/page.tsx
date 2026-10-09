@@ -1,7 +1,6 @@
 'use client'
-import Image from "next/image";
 import BarraLateral from "./Widgets/BarraLateral";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Header from "./Components/Header";
 import Dashboard from "./Conteudo/Dashboard";
 import Pedido from "./Conteudo/Pedido";
@@ -19,11 +18,11 @@ export default function Home() {
   }
 
   return (
-    <div className="flex w-screen h-screen">
+    <div className="flex min-h-dvh w-full flex-col overflow-x-hidden md:h-dvh md:flex-row md:overflow-hidden">
       <BarraLateral paginaAtual={paginaAtual} informarPaginaAtual={receberPaginaAtual}/>
-      <div className="flex-1 flex flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Header />
-        <main className="p-3 bg-[#ebf0f6] flex-1 overflow-x-hidden">
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden bg-[#ebf0f6] p-3 pb-20 sm:p-4 sm:pb-20 md:overflow-y-auto md:p-5 md:pb-5 lg:p-6">
             {paginaAtual == 0 && <Dashboard />}
             {paginaAtual == 1 && <Pedido />}
             {paginaAtual == 2 && <Clientes />}

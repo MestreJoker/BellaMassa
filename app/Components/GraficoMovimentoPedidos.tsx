@@ -6,9 +6,9 @@ export default function GraficoMovimentoPedidos() {
     const [periodo, setPeriodo] = useState("Pedidos")
 
     return (
-        <div className="flex-2 bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+        <div className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:flex-2">
             {/* Cabeçalho do Card */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
                         <FontAwesomeIcon icon={faChartLine} className="text-sm" />
@@ -31,7 +31,7 @@ export default function GraficoMovimentoPedidos() {
             </div>
 
             {/* Simulação visual do gráfico de linha com gradiente */}
-            <div className="relative h-48 w-full flex items-end pt-4">
+            <div className="relative flex h-40 w-full min-w-0 items-end pt-4 sm:h-48">
                 {/* Linhas de grade horizontais de fundo */}
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-30">
                     <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">20</div>

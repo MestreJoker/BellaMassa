@@ -3,7 +3,7 @@ import { faCoins, faArrowUp } from "@fortawesome/free-solid-svg-icons"
 
 export default function CardReceitaDia() {
     return (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+        <div className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             {/* Cabeçalho */}
             <div className="flex items-center gap-3 mb-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
@@ -15,7 +15,7 @@ export default function CardReceitaDia() {
             {/* Valor e Estatística */}
             <div className="flex items-end justify-between">
                 <div>
-                    <span className="text-2xl font-black text-slate-900">R$ 682,40</span>
+                    <span className="text-xl font-black text-slate-900 sm:text-2xl">R$ 682,40</span>
                     <div className="flex items-center gap-1.5 mt-1 text-xs font-semibold text-emerald-600">
                         <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
                         <span>15% <span className="font-normal text-slate-500">em relação a ontem</span></span>

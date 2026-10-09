@@ -41,13 +41,13 @@ export default function CardDashboard(props: CardDahsboardProps) {
 
 
     return (
-        <div className={`bg-white rounded-lg border border-gray-200 shadow-md px-4 pt-4 pb-7 flex-1 flex gap-4 hover:scale-102 transition-all duration-300`}>
-            <div className={`w-12 h-12 rounded-full flex justify-center items-center text-white ${corFundo}`}>
+        <div className="flex min-w-0 items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-4 shadow-sm transition-shadow duration-300 hover:shadow-md sm:gap-4 sm:px-4">
+            <div className={`flex size-10 shrink-0 items-center justify-center rounded-full text-white sm:size-12 ${corFundo}`}>
                 {props.icone}
             </div>
-            <div>
-                <p className="font-bold">{props.texto}</p>
-                <p className="font-bold text-3xl">{props.valor}</p>
+            <div className="min-w-0">
+                <p className="wrap-break-word text-sm font-bold sm:text-base">{props.texto}</p>
+                <p className="text-2xl font-bold sm:text-3xl">{props.valor}</p>
             </div>
         </div>
     )

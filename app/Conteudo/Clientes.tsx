@@ -28,12 +28,12 @@ export default function Clientes(){
     }
 
     return(
-        <div className="h-full flex flex-col">
+        <div className="min-w-0 xl:flex xl:h-full xl:flex-col">
             <div className="shrink-0">
                 <ConteudoCardsDashboard pagina="clientes" valor1={clientes.length} />
             </div>
 
-            <div className="flex gap-3 mt-3 flex-1 min-h-0">
+            <div className="mt-3 flex min-w-0 flex-col gap-3 xl:min-h-0 xl:flex-1 xl:flex-row">
                 <TabelaClientes informarClique={passarIdCliente}/>
                 
                 <InfomacoesCliente idCliente={idClienteSelecionado}/>

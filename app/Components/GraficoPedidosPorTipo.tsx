@@ -1,12 +1,12 @@
 export default function GraficoPedidosPorTipo() {
     return (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+        <div className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             <h3 className="text-base font-bold text-slate-800 mb-4">Pedidos por tipo</h3>
 
-            <div className="flex items-center justify-between my-2">
+            <div className="my-2 flex min-w-0 flex-wrap items-center justify-center gap-4">
                 {/* Gráfico circular simulado (Donut Chart) */}
                 <div className="relative flex items-center justify-center">
-                    <div className="h-28 w-28 rounded-full border-[10px] border-slate-100 flex items-center justify-center relative overflow-hidden">
+                    <div className="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-[10px] border-slate-100 sm:size-28">
                         {/* Simulação visual dos percentuais com conic-gradient */}
                         <div 
                             className="absolute inset-0 rounded-full"
@@ -23,8 +23,8 @@ export default function GraficoPedidosPorTipo() {
                 </div>
 
                 {/* Legendas detalhadas */}
-                <div className="flex flex-col gap-2.5 text-xs">
-                    <div className="flex items-center justify-between gap-6">
+                <div className="flex min-w-[140px] flex-1 flex-col gap-2.5 text-xs">
+                    <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <span className="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
                             <span className="text-slate-600 font-medium">Entrega</span>
@@ -32,7 +32,7 @@ export default function GraficoPedidosPorTipo() {
                         <span className="font-semibold text-slate-800">58% <span className="text-slate-400 font-normal">(7)</span></span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-6">
+                    <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <span className="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
                             <span className="text-slate-600 font-medium">Retirada</span>
@@ -40,7 +40,7 @@ export default function GraficoPedidosPorTipo() {
                         <span className="font-semibold text-slate-800">25% <span className="text-slate-400 font-normal">(3)</span></span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-6">
+                    <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <span className="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
                             <span className="text-slate-600 font-medium">Balcão</span>

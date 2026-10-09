@@ -2,7 +2,6 @@ import { faChartBar, faClipboard, faHouse, faTruck, faUserGroup, faUtensils, faW
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import ItemBarraLateral from "../Components/ItemBarraLateral"
 import Image from "next/image"
-import { useState } from "react"
 
 interface BarraLateralProps {
     paginaAtual: number
@@ -53,9 +52,9 @@ export default function BarraLateral(props: BarraLateralProps){
     }
 
     return(
-        <aside className="h-full w-70 bg-[#0b0f16] p-5">
-            <Image alt="logoBellaMassa" src={'/images/logoBellaMassa.jpg'} width={220} height={220}/>
-            <div id="conteudoLinks" className="flex flex-col gap-3 mt-5">
+        <aside className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0b0f16] px-1 py-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] md:static md:h-dvh md:w-64 md:shrink-0 md:overflow-y-auto md:border-0 md:p-5">
+            <Image alt="Bella Massa" src={'/images/logoBellaMassa.jpg'} width={220} height={220} className="hidden h-auto w-full max-w-55 md:block"/>
+            <nav id="conteudoLinks" aria-label="Navegação principal" className="flex gap-0 md:mt-5 md:flex-col md:gap-3">
                 {itens.map((item, index) => {
                     return(
                         <ItemBarraLateral
@@ -67,7 +66,7 @@ export default function BarraLateral(props: BarraLateralProps){
                         indicarClique={informarPaginaAtual}/>
                     )
                 })}
-            </div>
+            </nav>
         </aside>
     )
 }

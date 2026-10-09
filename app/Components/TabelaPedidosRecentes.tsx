@@ -74,9 +74,9 @@ export default function TabelaPedidosRecentes({ onVerTodos }: PedidoRecenteProps
     }
 
     return (
-        <section className="w-full rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden font-sans">
+        <section className="w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white font-sans shadow-sm">
             {/* Cabeçalho da Tabela */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-6">
                 <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
                         <FontAwesomeIcon icon={faClipboardList} className="text-sm" />
@@ -93,8 +93,8 @@ export default function TabelaPedidosRecentes({ onVerTodos }: PedidoRecenteProps
             </div>
 
             {/* Conteúdo da Tabela */}
-            <div className="w-full overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse">
+            <div className="w-full min-w-0 overflow-x-auto">
+                <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                     <thead className="bg-slate-50/70 text-xs font-semibold uppercase text-slate-500 border-b border-slate-100">
                         <tr>
                             <th className="px-6 py-3.5">Nº Pedido</th>

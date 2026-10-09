@@ -6,8 +6,8 @@ import TabelaPedidosRecentes from "../Components/TabelaPedidosRecentes";
 
 export default function Dashboard() {
     return (
-        <div className="flex flex-col gap-5">
-            <div className="relative w-full h-40 rounded-xl overflow-hidden shadow-lg bg-[#12161c]">
+        <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
+            <div className="relative h-40 w-full overflow-hidden rounded-xl bg-[#12161c] shadow-lg sm:h-44">
                 {/* Container da imagem com o gradiente de transição para o lado esquerdo */}
                 <div
                     className="absolute inset-0 bg-[url('/caminho/para/sua/imagem.jpg')] bg-right bg-cover bg-no-repeat"
@@ -21,9 +21,9 @@ export default function Dashboard() {
                 />
 
                 {/* Conteúdo do seu card de boas-vindas */}
-                <div className="relative z-10 flex flex-col justify-center h-full px-8 text-white max-w-xl">
-                    <h1 className="text-3xl font-bold mb-2">Bem-vindo, Gabriel!</h1>
-                    <p className="text-gray-300 text-sm w-[60%]">
+                <div className="relative z-10 flex h-full max-w-xl flex-col justify-center px-4 text-white sm:px-8">
+                    <h1 className="mb-2 text-2xl font-bold sm:text-3xl">Bem-vindo, Gabriel!</h1>
+                    <p className="w-full text-xs text-gray-300 sm:w-3/5 sm:text-sm">
                         Aqui você acompanha o movimento da pizzaria e gerencia os pedidos do dia.
                     </p>
                 </div>
@@ -32,8 +32,8 @@ export default function Dashboard() {
             <ConteudoCardsDashboard pagina="dashboard" valor1={12}/>
 
             {/* Seção dos gráficos e receita do dia */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2 flex flex-col">
+            <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+                <div className="flex min-w-0 flex-col lg:col-span-2">
                     <GraficoMovimentoPedidos />
                 </div>
                 <div className="flex flex-col gap-5">
