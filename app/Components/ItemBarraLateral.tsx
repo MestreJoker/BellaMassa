@@ -16,10 +16,10 @@ export default function ItemBarraLateral(props: ItemBarraLateral){
         type="button"
         aria-current={props.paginaAtual === props.paginaItem ? "page" : undefined}
         aria-label={props.texto}
-        className={`flex min-w-10 flex-1 flex-col items-center justify-center gap-1 rounded-lg p-1.5 text-white transition-colors hover:bg-[#ca1921] md:flex-none md:flex-row md:justify-start md:gap-3 md:p-2 ${estilo ?? ""}`}
+        className={`flex w-full flex-row items-center justify-start gap-3 rounded-lg p-2 text-white transition-colors hover:bg-[#ca1921] md:flex-none ${estilo ?? ""}`}
         onClick={() => props.indicarClique(props.paginaItem)}>
             {props.icone}
-            <p className="hidden text-sm text-white md:block lg:text-base">
+            <p className="text-sm text-white lg:text-base">
                 {props.texto}
             </p>
         </button>

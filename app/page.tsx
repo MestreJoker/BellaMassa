@@ -12,17 +12,23 @@ import Relatorios from "./Conteudo/Relatorios";
 
 export default function Home() {
   const [paginaAtual, setPaginaAual] = useState(0)
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false)
 
   function receberPaginaAtual(pagina: number){
       setPaginaAual(pagina)
   }
 
   return (
-    <div className="flex min-h-dvh w-full flex-col overflow-x-hidden md:h-dvh md:flex-row md:overflow-hidden">
-      <BarraLateral paginaAtual={paginaAtual} informarPaginaAtual={receberPaginaAtual}/>
+    <div className="flex h-dvh w-full flex-col overflow-hidden md:flex-row">
+      <BarraLateral
+        paginaAtual={paginaAtual}
+        informarPaginaAtual={receberPaginaAtual}
+        menuMobileAberto={menuMobileAberto}
+        fecharMenuMobile={() => setMenuMobileAberto(false)}
+      />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <Header />
-        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden bg-[#ebf0f6] p-3 pb-20 sm:p-4 sm:pb-20 md:overflow-y-auto md:p-5 md:pb-5 lg:p-6">
+        <Header alternarMenuMobile={() => setMenuMobileAberto((aberto) => !aberto)} />
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#ebf0f6] p-3 sm:p-4 md:p-5 lg:p-6">
             {paginaAtual == 0 && <Dashboard />}
             {paginaAtual == 1 && <Pedido />}
             {paginaAtual == 2 && <Clientes />}

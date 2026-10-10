@@ -2,13 +2,28 @@ import { faChartBar, faClipboard, faHouse, faTruck, faUserGroup, faUtensils, faW
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import ItemBarraLateral from "../Components/ItemBarraLateral"
 import Image from "next/image"
+import { useEffect } from "react"
 
 interface BarraLateralProps {
     paginaAtual: number
     informarPaginaAtual: (pagina: number) => void
+    menuMobileAberto: boolean
+    fecharMenuMobile: () => void
 }
 
 export default function BarraLateral(props: BarraLateralProps){
+    const { menuMobileAberto, fecharMenuMobile } = props
+
+    useEffect(() => {
+        if (!menuMobileAberto) return
+
+        function fecharComEsc(evento: KeyboardEvent) {
+            if (evento.key === "Escape") fecharMenuMobile()
+        }
+
+        window.addEventListener("keydown", fecharComEsc)
+        return () => window.removeEventListener("keydown", fecharComEsc)
+    }, [menuMobileAberto, fecharMenuMobile])
     
     const itens = [
         {
@@ -49,12 +64,22 @@ export default function BarraLateral(props: BarraLateralProps){
     ]
     function informarPaginaAtual(valor: number){
         props.informarPaginaAtual(valor)
+        props.fecharMenuMobile()
     }
 
     return(
-        <aside className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0b0f16] px-1 py-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] md:static md:h-dvh md:w-64 md:shrink-0 md:overflow-y-auto md:border-0 md:p-5">
-            <Image alt="Bella Massa" src={'/images/logoBellaMassa.jpg'} width={220} height={220} className="hidden h-auto w-full max-w-55 md:block"/>
-            <nav id="conteudoLinks" aria-label="Navegação principal" className="flex gap-0 md:mt-5 md:flex-col md:gap-3">
+        <>
+            {props.menuMobileAberto && (
+                <button
+                    type="button"
+                    aria-label="Fechar menu de navegação"
+                    onClick={props.fecharMenuMobile}
+                    className="fixed inset-0 z-40 bg-black/50 md:hidden"
+                />
+            )}
+            <aside className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] overflow-y-auto bg-[#0b0f16] p-5 shadow-2xl transition-transform duration-200 md:static md:h-dvh md:w-64 md:max-w-none md:shrink-0 md:translate-x-0 md:overflow-y-auto md:shadow-none ${props.menuMobileAberto ? "translate-x-0" : "-translate-x-full"}`}>
+            <Image alt="Bella Massa" src={'/images/logoBellaMassa.jpg'} width={220} height={220} className="h-auto w-full max-w-55"/>
+            <nav id="conteudoLinks" aria-label="Navegação principal" className="mt-5 flex flex-col gap-3">
                 {itens.map((item, index) => {
                     return(
                         <ItemBarraLateral
@@ -67,6 +92,7 @@ export default function BarraLateral(props: BarraLateralProps){
                     )
                 })}
             </nav>
-        </aside>
+            </aside>
+        </>
     )
 }
