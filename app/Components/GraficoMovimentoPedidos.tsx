@@ -1,9 +1,59 @@
-import { useState } from "react"
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faChartLine } from "@fortawesome/free-solid-svg-icons"
+import Axios from "axios"
+
+interface PedidoJson {
+    idPedido: number
+    dataPedido: string
+    total: number
+}
 
 export default function GraficoMovimentoPedidos() {
     const [periodo, setPeriodo] = useState("Pedidos")
+    const [pedidos, setPedidos] = useState<PedidoJson[]>([])
+
+    useEffect(() => {
+        async function carregarDados() {
+            try {
+                const response = await Axios.get<PedidoJson[]>("/json/pedidos.json")
+                setPedidos(response.data)
+            } catch (erro) {
+                console.log(erro)
+            }
+        }
+
+        carregarDados()
+    }, [])
+
+    const dadosGrafico = useMemo(() => {
+        const ultimos7Dias = Array.from({ length: 7 }, (_, index) => {
+            const data = new Date()
+            data.setDate(data.getDate() - (6 - index))
+            return {
+                label: data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+                valor: 0,
+            }
+        })
+
+        pedidos.forEach((pedido) => {
+            const dataPedido = new Date(pedido.dataPedido)
+            const hoje = new Date()
+            const diferencaDias = Math.floor((hoje.getTime() - dataPedido.getTime()) / (1000 * 60 * 60 * 24))
+
+            if (diferencaDias >= 0 && diferencaDias <= 6) {
+                const indice = 6 - diferencaDias
+                const valorAtual = ultimos7Dias[indice]?.valor ?? 0
+                ultimos7Dias[indice].valor = valorAtual + (periodo === "Faturamento" ? Number(pedido.total || 0) : 1)
+            }
+        })
+
+        return ultimos7Dias
+    }, [pedidos, periodo])
+
+    const maiorValor = Math.max(...dadosGrafico.map((item) => item.valor), 1)
 
     return (
         <div className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:flex-2">
@@ -34,10 +84,10 @@ export default function GraficoMovimentoPedidos() {
             <div className="relative flex h-40 w-full min-w-0 items-end pt-4 sm:h-48">
                 {/* Linhas de grade horizontais de fundo */}
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-30">
-                    <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">20</div>
-                    <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">15</div>
-                    <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">10</div>
-                    <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">5</div>
+                    <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">{Math.round(maiorValor)}</div>
+                    <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">{Math.round(maiorValor * 0.75)}</div>
+                    <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">{Math.round(maiorValor * 0.5)}</div>
+                    <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">{Math.round(maiorValor * 0.25)}</div>
                     <div className="border-b border-slate-200 w-full text-[10px] text-slate-400 text-right pr-2">0</div>
                 </div>
 
@@ -53,13 +103,25 @@ export default function GraficoMovimentoPedidos() {
 
                         {/* Área preenchida sob a linha */}
                         <path
-                            d="M 0 120 Q 100 100, 200 95 T 400 60 T 500 80 T 600 50 L 600 150 L 0 150 Z"
+                            d={dadosGrafico
+                                .map((item, index) => {
+                                    const x = (index / (dadosGrafico.length - 1)) * 600
+                                    const y = 150 - (item.valor / maiorValor) * 120 - 15
+                                    return `${index === 0 ? "M" : "L"} ${x} ${y}`
+                                })
+                                .join(" ") + " L 600 150 L 0 150 Z"}
                             fill="url(#gradGrafico)"
                         />
 
                         {/* Linha principal vermelha */}
                         <path
-                            d="M 0 120 Q 100 100, 200 95 T 400 60 T 500 80 T 600 50"
+                            d={dadosGrafico
+                                .map((item, index) => {
+                                    const x = (index / (dadosGrafico.length - 1)) * 600
+                                    const y = 150 - (item.valor / maiorValor) * 120 - 15
+                                    return `${index === 0 ? "M" : "L"} ${x} ${y}`
+                                })
+                                .join(" ")}
                             fill="none"
                             stroke="#e11d48"
                             strokeWidth="2.5"
@@ -67,26 +129,20 @@ export default function GraficoMovimentoPedidos() {
                         />
 
                         {/* Pontos de marcação nos vértices */}
-                        <circle cx="0" cy="120" r="4" fill="#e11d48" className="stroke-white stroke-2" />
-                        <circle cx="100" cy="107" r="4" fill="#e11d48" className="stroke-white stroke-2" />
-                        <circle cx="200" cy="95" r="4" fill="#e11d48" className="stroke-white stroke-2" />
-                        <circle cx="300" cy="97" r="4" fill="#e11d48" className="stroke-white stroke-2" />
-                        <circle cx="400" cy="60" r="4" fill="#e11d48" className="stroke-white stroke-2" />
-                        <circle cx="500" cy="80" r="4" fill="#e11d48" className="stroke-white stroke-2" />
-                        <circle cx="600" cy="50" r="4" fill="#e11d48" className="stroke-white stroke-2" />
+                        {dadosGrafico.map((item, index) => {
+                            const x = (index / (dadosGrafico.length - 1)) * 600
+                            const y = 150 - (item.valor / maiorValor) * 120 - 15
+                            return <circle key={item.label} cx={x} cy={y} r="4" fill="#e11d48" className="stroke-white stroke-2" />
+                        })}
                     </svg>
                 </div>
             </div>
 
             {/* Legenda do eixo X (Datas) */}
-            <div className="flex justify-between text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-100">
-                <span>09/09</span>
-                <span>10/09</span>
-                <span>11/09</span>
-                <span>12/09</span>
-                <span>13/09</span>
-                <span>14/09</span>
-                <span>15/09</span>
+            <div className="mt-3 flex justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-400">
+                {dadosGrafico.map((item) => (
+                    <span key={item.label}>{item.label}</span>
+                ))}
             </div>
         </div>
     )

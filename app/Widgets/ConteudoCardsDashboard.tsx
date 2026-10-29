@@ -5,29 +5,35 @@ import CardDashboard from "../Components/CardDahsboard"
 interface ConteudoCardsDashboardProps {
     pagina: string
     valor1: number
+    dashboardStats?: {
+        pedidosHoje?: number
+        emPreparo?: number
+        prontos?: number
+        emEntrega?: number
+    }
 }
 
 export default function ConteudoCardsDashboard(props: ConteudoCardsDashboardProps) {
-    const cardsDashboard = [
+    const dashboardCards = [
         {
             icone: <FontAwesomeIcon icon={faCar} />,
             texto: "Pedidos hoje",
-            valor: 12
+            valor: props.dashboardStats?.pedidosHoje ?? 12,
         },
         {
             icone: <FontAwesomeIcon icon={faCar} />,
             texto: "Em preparo",
-            valor: 5
+            valor: props.dashboardStats?.emPreparo ?? 5,
         },
         {
             icone: <FontAwesomeIcon icon={faCar} />,
             texto: "Prontos",
-            valor: 3
+            valor: props.dashboardStats?.prontos ?? 3,
         },
         {
             icone: <FontAwesomeIcon icon={faCar} />,
             texto: "Em entrega",
-            valor: 4
+            valor: props.dashboardStats?.emEntrega ?? 4,
         },
     ]
 
@@ -35,53 +41,58 @@ export default function ConteudoCardsDashboard(props: ConteudoCardsDashboardProp
         {
             icone: <FontAwesomeIcon icon={faUser} />,
             texto: "Total de clientes",
-            valor: props.valor1
+            valor: props.valor1,
         },
         {
             icone: <FontAwesomeIcon icon={faPhone} />,
             texto: "Clientes ativos",
-            valor: 5
+            valor: Math.max(1, Math.round(props.valor1 * 0.8)),
         },
         {
             icone: <FontAwesomeIcon icon={faClock} />,
             texto: "Novos este mês",
-            valor: 3
+            valor: 3,
         },
         {
             icone: <FontAwesomeIcon icon={faLocationDot} />,
             texto: "Bairros atendidos",
-            valor: 4
+            valor: 4,
         },
     ]
+
     return (
         <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4">
-            {props.pagina == "dashboard" ? (
+            {props.pagina === "dashboard" ? (
                 <>
-                    {cardsDashboard.map((item, index) => {
+                    {dashboardCards.map((item, index) => {
                         return (
-                            <CardDashboard id={index + 1} key={`card${index + 1}`} icone={item.icone} texto={item.texto}
+                            <CardDashboard
+                                id={index + 1}
+                                key={`card${index + 1}`}
+                                icone={item.icone}
+                                texto={item.texto}
                                 valor={item.valor}
                                 pagina={props.pagina}
                             />
                         )
                     })}
                 </>
-            ) :
-                (
-                    <>
-                        {cardsClientes.map((item, index) => {
-                            return (
-                                <CardDashboard id={index + 1} key={`card${index + 1}`} icone={item.icone} texto={item.texto}
-                                    valor={item.valor}
-                                    pagina={props.pagina}
-
-                                />
-                            )
-                        })}
-                    </>
-                )
-            }
-
+            ) : (
+                <>
+                    {cardsClientes.map((item, index) => {
+                        return (
+                            <CardDashboard
+                                id={index + 1}
+                                key={`card${index + 1}`}
+                                icone={item.icone}
+                                texto={item.texto}
+                                valor={item.valor}
+                                pagina={props.pagina}
+                            />
+                        )
+                    })}
+                </>
+            )}
         </div>
     )
 }

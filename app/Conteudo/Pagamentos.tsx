@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowUp,
@@ -14,204 +18,139 @@ import {
     faWallet,
 } from "@fortawesome/free-solid-svg-icons";
 
-const cardsResumo = [
-    {
-        titulo: "Total recebido",
-        valor: "R$ 2.847,32",
-        percentual: "+12%",
-        detalhe: "em relação ao período anterior",
-        icone: faMoneyBillWave,
-        cor: "bg-emerald-100 text-emerald-700",
-        texto: "text-emerald-600",
-    },
-    {
-        titulo: "Pagamentos por Pix",
-        valor: "48%",
-        detalhe: "12 de 25 pagamentos",
-        icone: faWallet,
-        cor: "bg-blue-100 text-blue-700",
-        texto: "text-blue-600",
-    },
-    {
-        titulo: "Pagamentos por cartão",
-        valor: "36%",
-        detalhe: "9 de 25 pagamentos",
-        icone: faCreditCard,
-        cor: "bg-violet-100 text-violet-700",
-        texto: "text-violet-600",
-    },
-    {
-        titulo: "Pagamentos em dinheiro",
-        valor: "16%",
-        detalhe: "4 de 25 pagamentos",
-        icone: faDollarSign,
-        cor: "bg-amber-100 text-amber-700",
-        texto: "text-amber-600",
-    },
-];
-
-const pagamentos = [
-    {
-        id: "#1024",
-        cliente: "João Silva",
-        valor: "R$ 72,90",
-        forma: "Pix",
-        formaIcone: faWallet,
-        status: "Pago",
-        statusTipo: "success",
-        data: "15/09/2026",
-        horario: "14:32",
-    },
-    {
-        id: "#1023",
-        cliente: "Maria Souza",
-        valor: "R$ 54,00",
-        forma: "Cartão de crédito",
-        formaIcone: faCreditCard,
-        status: "Pago",
-        statusTipo: "success",
-        data: "15/09/2026",
-        horario: "14:15",
-    },
-    {
-        id: "#1022",
-        cliente: "Pedro Santos",
-        valor: "R$ 89,90",
-        forma: "Dinheiro",
-        formaIcone: faDollarSign,
-        status: "Pago",
-        statusTipo: "success",
-        data: "15/09/2026",
-        horario: "13:47",
-    },
-    {
-        id: "#1021",
-        cliente: "Ana Lima",
-        valor: "R$ 46,50",
-        forma: "Pix",
-        formaIcone: faWallet,
-        status: "Pago",
-        statusTipo: "success",
-        data: "15/09/2026",
-        horario: "12:58",
-    },
-    {
-        id: "#1020",
-        cliente: "Carlos Oliveira",
-        valor: "R$ 67,80",
-        forma: "Cartão de crédito",
-        formaIcone: faCreditCard,
-        status: "Pago",
-        statusTipo: "success",
-        data: "15/09/2026",
-        horario: "12:41",
-    },
-    {
-        id: "#1019",
-        cliente: "Fernanda Costa",
-        valor: "R$ 38,90",
-        forma: "Dinheiro",
-        formaIcone: faDollarSign,
-        status: "Pago",
-        statusTipo: "success",
-        data: "15/09/2026",
-        horario: "12:20",
-    },
-    {
-        id: "#1018",
-        cliente: "Ricardo Alves",
-        valor: "R$ 76,50",
-        forma: "Pix",
-        formaIcone: faWallet,
-        status: "Pago",
-        statusTipo: "success",
-        data: "15/09/2026",
-        horario: "11:56",
-    },
-    {
-        id: "#1017",
-        cliente: "Juliana Pereira",
-        valor: "R$ 59,90",
-        forma: "Cartão de crédito",
-        formaIcone: faCreditCard,
-        status: "Pendente",
-        statusTipo: "warning",
-        data: "15/09/2026",
-        horario: "11:33",
-    },
-    {
-        id: "#1016",
-        cliente: "Lucas Ferreira",
-        valor: "R$ 42,00",
-        forma: "Dinheiro",
-        formaIcone: faDollarSign,
-        status: "Pago",
-        statusTipo: "success",
-        data: "15/09/2026",
-        horario: "11:12",
-    },
-    {
-        id: "#1015",
-        cliente: "Carla Mendes",
-        valor: "R$ 68,40",
-        forma: "Pix",
-        formaIcone: faWallet,
-        status: "Pago",
-        statusTipo: "success",
-        data: "15/09/2026",
-        horario: "10:47",
-    },
-];
-
-function obterClassesStatus(tipo: string) {
-    if (tipo === "success") {
-        return "bg-emerald-100 text-emerald-700";
-    }
-    if (tipo === "warning") {
-        return "bg-amber-100 text-amber-700";
-    }
-    return "bg-slate-100 text-slate-700";
+interface ClienteJson {
+    idCliente: number;
+    nome: string;
 }
 
-function ResumoCard({
-    titulo,
-    valor,
-    percentual,
-    detalhe,
-    icone,
-    cor,
-    texto,
-}: {
-    titulo: string;
-    valor: string;
-    percentual?: string;
-    detalhe: string;
-    icone: any;
-    cor: string;
-    texto: string;
-}) {
-    return (
-        <div className="rounded-[18px] border border-[#e7ecf3] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-            <div className="flex items-start justify-between gap-3">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${cor}`}>
-                    <FontAwesomeIcon icon={icone} className="text-lg" />
-                </div>
-                <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600">
-                    <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
-                    <span>{percentual || "0%"}</span>
-                </div>
-            </div>
-
-            <div className="mt-4">
-                <p className="text-sm font-medium text-slate-500">{titulo}</p>
-                <p className={`mt-2 text-2xl font-black ${texto}`}>{valor}</p>
-                <p className="mt-1 text-xs text-slate-500">{detalhe}</p>
-            </div>
-        </div>
-    );
+interface PedidoJson {
+    idPedido: number;
+    idCliente: number;
+    total: number;
+    formaPagamento: string;
+    status: string;
+    tipoEntrega: string;
+    dataPedido: string;
 }
+
+const formatCurrency = (valor: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
 
 export default function Pagamentos() {
+    const [pedidos, setPedidos] = useState<PedidoJson[]>([]);
+    const [clientes, setClientes] = useState<ClienteJson[]>([]);
+    const [pesquisa, setPesquisa] = useState("");
+    const [statusFiltro, setStatusFiltro] = useState("Todos");
+    const [periodoFiltro, setPeriodoFiltro] = useState("30d");
+
+    const pedidosFiltradosPorPeriodo = useMemo(() => {
+        if (periodoFiltro === "todos") return pedidos;
+
+        const hoje = new Date();
+        const dias = Number(periodoFiltro.replace("d", ""));
+
+        return pedidos.filter((pedido) => {
+            const dataPedido = new Date(pedido.dataPedido);
+            const diff = (hoje.getTime() - dataPedido.getTime()) / (1000 * 60 * 60 * 24);
+            return diff >= 0 && diff <= dias;
+        });
+    }, [pedidos, periodoFiltro]);
+
+    const clientesMap = useMemo(
+        () => new Map(clientes.map((cliente) => [cliente.idCliente, cliente.nome])),
+        [clientes],
+    );
+
+    const pedidosFormatados = useMemo(() => {
+        return pedidosFiltradosPorPeriodo.map((pedido) => {
+            const clienteNome = clientesMap.get(pedido.idCliente) ?? `Cliente ${pedido.idCliente}`;
+            const statusNormalizado = /pendente/i.test(pedido.status) ? "Pendente" : "Pago";
+
+            return {
+                id: `#${pedido.idPedido}`,
+                cliente: clienteNome,
+                valor: formatCurrency(pedido.total),
+                forma: pedido.formaPagamento ?? "Pix",
+                formaIcone:
+                    pedido.formaPagamento === "Cartão de crédito"
+                        ? faCreditCard
+                        : pedido.formaPagamento === "Dinheiro"
+                        ? faDollarSign
+                        : faWallet,
+                status: statusNormalizado,
+                statusTipo: statusNormalizado === "Pago" ? "success" : "warning",
+                data: new Date(pedido.dataPedido).toLocaleDateString("pt-BR"),
+                horario: new Date(pedido.dataPedido).toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                }),
+            };
+        });
+    }, [clientesMap, pedidosFiltradosPorPeriodo]);
+
+    const pedidosFiltrados = useMemo(() => {
+        return pedidosFormatados.filter((pedido) => {
+            const termo = pesquisa.toLowerCase();
+            const atendePesquisa =
+                !termo ||
+                pedido.id.toLowerCase().includes(termo) ||
+                pedido.cliente.toLowerCase().includes(termo) ||
+                pedido.forma.toLowerCase().includes(termo);
+
+            const atendeStatus = statusFiltro === "Todos" || pedido.status === statusFiltro;
+            return atendePesquisa && atendeStatus;
+        });
+    }, [pesquisa, pedidosFormatados, statusFiltro]);
+
+    const totalRecebido = pedidosFiltradosPorPeriodo.reduce((total, pedido) => total + Number(pedido.total || 0), 0);
+    const totalPedidos = pedidosFiltradosPorPeriodo.length;
+    const pagamentosPix = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.formaPagamento === "Pix").length;
+    const pagamentosCartao = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.formaPagamento === "Cartão de crédito").length;
+    const pagamentosDinheiro = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.formaPagamento === "Dinheiro").length;
+
+    const cardsResumo = [
+        {
+            titulo: "Total recebido",
+            valor: formatCurrency(totalRecebido),
+            percentual: "+12%",
+            detalhe: "em relação ao período anterior",
+            icone: faMoneyBillWave,
+            cor: "bg-emerald-100 text-emerald-700",
+            texto: "text-emerald-700",
+        },
+        {
+            titulo: "Pagamentos por Pix",
+            valor: `${Math.round((pagamentosPix / Math.max(totalPedidos, 1)) * 100) || 0}%`,
+            detalhe: `${pagamentosPix} de ${totalPedidos || 0} pagamentos`,
+            icone: faWallet,
+            cor: "bg-blue-100 text-blue-700",
+            texto: "text-blue-700",
+        },
+        {
+            titulo: "Pagamentos por cartão",
+            valor: `${Math.round((pagamentosCartao / Math.max(totalPedidos, 1)) * 100) || 0}%`,
+            detalhe: `${pagamentosCartao} de ${totalPedidos || 0} pagamentos`,
+            icone: faCreditCard,
+            cor: "bg-violet-100 text-violet-700",
+            texto: "text-violet-700",
+        },
+        {
+            titulo: "Pagamentos em dinheiro",
+            valor: `${Math.round((pagamentosDinheiro / Math.max(totalPedidos, 1)) * 100) || 0}%`,
+            detalhe: `${pagamentosDinheiro} de ${totalPedidos || 0} pagamentos`,
+            icone: faDollarSign,
+            cor: "bg-amber-100 text-amber-700",
+            texto: "text-amber-700",
+        },
+    ];
+
+    function obterClassesStatus(tipo: string) {
+        if (tipo === "success") return "bg-emerald-100 text-emerald-700";
+        if (tipo === "warning") return "bg-amber-100 text-amber-700";
+        return "bg-slate-100 text-slate-700";
+    }
+
     return (
         <div className="flex min-w-0 flex-col gap-4">
             <header className="flex flex-col gap-3 rounded-[18px] border border-[#e7ecf3] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)] xl:flex-row xl:items-center xl:justify-between">
@@ -228,14 +167,16 @@ export default function Pagamentos() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937]"
+                    <select
+                        value={periodoFiltro}
+                        onChange={(evento) => setPeriodoFiltro(evento.target.value)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937] outline-none"
                     >
-                        <FontAwesomeIcon icon={faCalendarDays} className="text-xs" />
-                        15/09/2026 - 15/09/2026
-                        <FontAwesomeIcon icon={faChevronDown} className="text-[10px]" />
-                    </button>
+                        <option value="7d">Últimos 7 dias</option>
+                        <option value="30d">Últimos 30 dias</option>
+                        <option value="90d">Últimos 90 dias</option>
+                        <option value="todos">Todo o período</option>
+                    </select>
 
                     <button
                         type="button"
@@ -249,7 +190,26 @@ export default function Pagamentos() {
 
             <section className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
                 {cardsResumo.map((card) => (
-                    <ResumoCard key={card.titulo} {...card} />
+                    <div
+                        key={card.titulo}
+                        className="rounded-[18px] border border-[#e7ecf3] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${card.cor}`}>
+                                <FontAwesomeIcon icon={card.icone} className="text-lg" />
+                            </div>
+                            <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600">
+                                <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
+                                <span>{card.percentual}</span>
+                            </div>
+                        </div>
+
+                        <div className="mt-4">
+                            <p className="text-sm font-medium text-slate-500">{card.titulo}</p>
+                            <p className={`mt-2 text-2xl font-black ${card.texto}`}>{card.valor}</p>
+                            <p className="mt-1 text-xs text-slate-500">{card.detalhe}</p>
+                        </div>
+                    </div>
                 ))}
             </section>
 
@@ -269,18 +229,25 @@ export default function Pagamentos() {
                             </span>
                             <input
                                 type="text"
+                                value={pesquisa}
+                                onChange={(evento) => setPesquisa(evento.target.value)}
                                 placeholder="Buscar por nº do pedido, cliente ou forma de pagamento..."
                                 className="w-full rounded-xl border border-[#dfe6ef] bg-[#f8fafc] py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-[#c9d5e7] sm:w-105"
                             />
                         </div>
 
-                        <button
-                            type="button"
-                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2.5 text-sm font-semibold text-[#1f2937]"
-                        >
+                        <div className="flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2.5 text-sm font-semibold text-[#1f2937]">
                             <FontAwesomeIcon icon={faFilter} className="text-xs" />
-                            Filtros
-                        </button>
+                            <select
+                                value={statusFiltro}
+                                onChange={(evento) => setStatusFiltro(evento.target.value)}
+                                className="bg-transparent text-sm font-semibold outline-none"
+                            >
+                                <option value="Todos">Todos</option>
+                                <option value="Pago">Pago</option>
+                                <option value="Pendente">Pendente</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -299,72 +266,52 @@ export default function Pagamentos() {
                         </thead>
 
                         <tbody className="divide-y divide-[#edf1f6] text-slate-700">
-                            {pagamentos.map((pagamento) => (
-                                <tr key={pagamento.id} className="transition-colors hover:bg-slate-50/80">
-                                    <td className="px-5 py-4 font-bold text-[#101820]">{pagamento.id}</td>
-                                    <td className="px-5 py-4 font-medium text-[#1f2937]">{pagamento.cliente}</td>
-                                    <td className="px-5 py-4 font-semibold text-[#101820]">{pagamento.valor}</td>
-                                    <td className="px-5 py-4">
-                                        <div className="inline-flex items-center gap-2 rounded-lg border border-[#edf1f6] bg-[#f8fafc] px-2.5 py-1.5 text-[#1f2937]">
-                                            <FontAwesomeIcon icon={pagamento.formaIcone} className="text-sm text-slate-500" />
-                                            <span>{pagamento.forma}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4">
-                                        <span
-                                            className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ${obterClassesStatus(
-                                                pagamento.statusTipo,
-                                            )}`}
-                                        >
-                                            {pagamento.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-5 py-4 text-slate-500">
-                                        <div className="flex flex-col">
-                                            <span>{pagamento.data}</span>
-                                            <span className="text-xs text-slate-400">{pagamento.horario}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4 text-right">
-                                        <button
-                                            type="button"
-                                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e5e7eb] bg-white text-slate-500 transition-colors hover:bg-slate-100"
-                                        >
-                                            <FontAwesomeIcon icon={faEllipsis} className="text-sm" />
-                                        </button>
+                            {pedidosFiltrados.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="px-5 py-8 text-center text-slate-500">
+                                        Nenhum pagamento encontrado para os filtros selecionados.
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                pedidosFiltrados.map((pagamento) => (
+                                    <tr key={pagamento.id} className="transition-colors hover:bg-slate-50/80">
+                                        <td className="px-5 py-4 font-bold text-[#101820]">{pagamento.id}</td>
+                                        <td className="px-5 py-4 font-medium text-[#1f2937]">{pagamento.cliente}</td>
+                                        <td className="px-5 py-4 font-semibold text-[#101820]">{pagamento.valor}</td>
+                                        <td className="px-5 py-4">
+                                            <div className="inline-flex items-center gap-2 rounded-lg border border-[#edf1f6] bg-[#f8fafc] px-2.5 py-1.5 text-[#1f2937]">
+                                                <FontAwesomeIcon icon={pagamento.formaIcone} className="text-sm text-slate-500" />
+                                                <span>{pagamento.forma}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <span
+                                                className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ${obterClassesStatus(
+                                                    pagamento.statusTipo,
+                                                )}`}
+                                            >
+                                                {pagamento.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-4 text-slate-500">
+                                            <div className="flex flex-col">
+                                                <span>{pagamento.data}</span>
+                                                <span className="text-xs text-slate-400">{pagamento.horario}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-4 text-right">
+                                            <button
+                                                type="button"
+                                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e5e7eb] bg-white text-slate-500 transition-colors hover:bg-slate-100"
+                                            >
+                                                <FontAwesomeIcon icon={faEllipsis} className="text-sm" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
-                </div>
-
-                <div className="flex flex-col gap-3 border-t border-[#edf1f6] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-slate-500">10 por página</p>
-
-                    <div className="flex items-center gap-2">
-                        <button type="button" className="rounded-lg border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-slate-500">
-                            ‹
-                        </button>
-                        <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((numero) => (
-                                <button
-                                    key={numero}
-                                    type="button"
-                                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold ${
-                                        numero === 1
-                                            ? "bg-[#d92626] text-white"
-                                            : "bg-[#f3f6fb] text-slate-600 hover:bg-[#eaf0f7]"
-                                    }`}
-                                >
-                                    {numero}
-                                </button>
-                            ))}
-                        </div>
-                        <button type="button" className="rounded-lg border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-slate-500">
-                            ›
-                        </button>
-                    </div>
                 </div>
             </section>
         </div>

@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowTrendUp,
@@ -12,115 +16,197 @@ import {
   faWallet,
 } from "@fortawesome/free-solid-svg-icons";
 
-const cardsResumo = [
-  {
-    titulo: "Faturamento total",
-    valor: "R$ 3.482,90",
-    percentual: "+18%",
-    detalhe: "em relação ao período anterior",
-    icone: faWallet,
-    cor: "bg-emerald-100 text-emerald-700",
-    valorCor: "text-emerald-700",
-  },
-  {
-    titulo: "Total de pedidos",
-    valor: "54",
-    percentual: "+12%",
-    detalhe: "em relação ao período anterior",
-    icone: faClipboardList,
-    cor: "bg-blue-100 text-blue-700",
-    valorCor: "text-blue-700",
-  },
-  {
-    titulo: "Ticket médio",
-    valor: "R$ 64,50",
-    percentual: "+5%",
-    detalhe: "em relação ao período anterior",
-    icone: faReceipt,
-    cor: "bg-violet-100 text-violet-700",
-    valorCor: "text-violet-700",
-  },
-  {
-    titulo: "Produtos vendidos",
-    valor: "89",
-    percentual: "+14%",
-    detalhe: "em relação ao período anterior",
-    icone: faPizzaSlice,
-    cor: "bg-amber-100 text-amber-700",
-    valorCor: "text-amber-700",
-  },
-];
-
-const produtosMaisVendidos = [
-  { nome: "Pizza Calabresa", qtd: 18, valor: "R$ 756,00", porcentagem: "20%" },
-  { nome: "Pizza Frango com Catupiry", qtd: 14, valor: "R$ 658,00", porcentagem: "17%" },
-  { nome: "Pizza Portuguesa", qtd: 10, valor: "R$ 472,00", porcentagem: "12%" },
-  { nome: "Coca-Cola 2L", qtd: 8, valor: "R$ 96,00", porcentagem: "9%" },
-  { nome: "Pizza 4 Queijos", qtd: 7, valor: "R$ 343,00", porcentagem: "9%" },
-];
-
-const vendasPorCategoria = [
-  { nome: "Pizzas", valor: "R$ 2.846,50", porcentagem: "65%", cor: "bg-blue-500" },
-  { nome: "Bebidas", valor: "R$ 639,00", porcentagem: "16%", cor: "bg-emerald-500" },
-  { nome: "Sobremesas", valor: "R$ 312,00", porcentagem: "9%", cor: "bg-violet-500" },
-  { nome: "Bordas", valor: "R$ 243,00", porcentagem: "6%", cor: "bg-amber-500" },
-  { nome: "Adicionais", valor: "R$ 167,40", porcentagem: "4%", cor: "bg-pink-500" },
-];
-
-const pedidosPorStatus = [
-  { nome: "Entregue", valor: 44, percentual: "81%", cor: "bg-pink-500" },
-  { nome: "Em preparo", valor: 6, percentual: "11%", cor: "bg-cyan-500" },
-  { nome: "Pronto", valor: 3, percentual: "6%", cor: "bg-green-500" },
-  { nome: "Em entrega", valor: 1, percentual: "2%", cor: "bg-amber-500" },
-];
-
-const ultimosPedidos = [
-  { id: "#1024", cliente: "João Silva", valor: "R$ 72,90", status: "Entrega", statusColor: "bg-emerald-100 text-emerald-700", data: "15/09/14:32" },
-  { id: "#1023", cliente: "Maria Souza", valor: "R$ 54,00", status: "Em preparo", statusColor: "bg-amber-100 text-amber-700", data: "15/09/14:15" },
-  { id: "#1022", cliente: "Pedro Santos", valor: "R$ 89,90", status: "Pago", statusColor: "bg-blue-100 text-blue-700", data: "15/09/13:47" },
-  { id: "#1021", cliente: "Ana Lima", valor: "R$ 46,50", status: "Entrega", statusColor: "bg-emerald-100 text-emerald-700", data: "15/09/12:58" },
-  { id: "#1020", cliente: "Carlos Oliveira", valor: "R$ 67,80", status: "Recebido", statusColor: "bg-violet-100 text-violet-700", data: "15/09/12:41" },
-];
-
-function CardResumo({
-  titulo,
-  valor,
-  percentual,
-  detalhe,
-  icone,
-  cor,
-  valorCor,
-}: {
-  titulo: string;
-  valor: string;
-  percentual: string;
-  detalhe: string;
-  icone: any;
-  cor: string;
-  valorCor: string;
-}) {
-  return (
-    <div className="rounded-[18px] border border-[#e7ecf3] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-      <div className="flex items-start justify-between gap-3">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${cor}`}>
-          <FontAwesomeIcon icon={icone} className="text-lg" />
-        </div>
-        <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600">
-          <FontAwesomeIcon icon={faArrowTrendUp} className="text-[10px]" />
-          <span>{percentual}</span>
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <p className="text-sm font-medium text-slate-500">{titulo}</p>
-        <p className={`mt-2 text-3xl font-black ${valorCor}`}>{valor}</p>
-        <p className="mt-1 text-xs text-slate-500">{detalhe}</p>
-      </div>
-    </div>
-  );
+interface ClienteJson {
+  idCliente: number;
+  nome: string;
 }
 
+interface PedidoJson {
+  idPedido: number;
+  idCliente: number;
+  dataPedido: string;
+  total: number;
+  formaPagamento: string;
+  tipoEntrega: string;
+  status: string;
+  itens?: Array<{
+    tipo?: string;
+    nome?: string;
+    quantidade?: number;
+    precoTotalItem?: number;
+  }>;
+}
+
+interface CardapioJson {
+  idItem: number;
+  idCategoria: number;
+  nome: string;
+  preco: number;
+  descricao: string;
+}
+
+const formatCurrency = (valor: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
+
 export default function Relatorios() {
+  const [pedidos, setPedidos] = useState<PedidoJson[]>([]);
+  const [clientes, setClientes] = useState<ClienteJson[]>([]);
+  const [cardapio, setCardapio] = useState<CardapioJson[]>([]);
+  const [periodoFiltro, setPeriodoFiltro] = useState("30d");
+
+  useEffect(() => {
+    async function carregarDados() {
+      try {
+        const [pedidosResponse, clientesResponse, cardapioResponse] = await Promise.all([
+          Axios.get<PedidoJson[]>("/json/pedidos.json"),
+          Axios.get<ClienteJson[]>("/json/clientes.json"),
+          Axios.get<CardapioJson[]>("/json/cardapio.json"),
+        ]);
+
+        setPedidos(pedidosResponse.data);
+        setClientes(clientesResponse.data);
+        setCardapio(cardapioResponse.data);
+      } catch (erro) {
+        console.log(erro);
+      }
+    }
+
+    carregarDados();
+  }, []);
+
+  const pedidosFiltradosPorPeriodo = useMemo(() => {
+    if (periodoFiltro === "todos") return pedidos;
+
+    const hoje = new Date();
+    const dias = Number(periodoFiltro.replace("d", ""));
+
+    return pedidos.filter((pedido) => {
+      const dataPedido = new Date(pedido.dataPedido);
+      const diff = (hoje.getTime() - dataPedido.getTime()) / (1000 * 60 * 60 * 24);
+      return diff >= 0 && diff <= dias;
+    });
+  }, [pedidos, periodoFiltro]);
+
+  const financeiro = useMemo(() => {
+    const total = pedidosFiltradosPorPeriodo.reduce((sum, pedido) => sum + Number(pedido.total || 0), 0);
+    const pedidosPagos = pedidosFiltradosPorPeriodo.filter((pedido) => /pago|pronto|andamento|entrega/i.test(pedido.status)).length;
+    const ticketMedio = pedidosFiltradosPorPeriodo.length ? total / pedidosFiltradosPorPeriodo.length : 0;
+    const produtosVendidos = pedidosFiltradosPorPeriodo.reduce((sum, pedido) => {
+      const itensQuantidade = Array.isArray(pedido.itens)
+        ? pedido.itens.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
+        : 0;
+      return sum + itensQuantidade;
+    }, 0);
+
+    return {
+      total,
+      pedidosPagos,
+      ticketMedio,
+      produtosVendidos,
+    };
+  }, [pedidosFiltradosPorPeriodo]);
+
+  const cardsResumo = [
+    {
+      titulo: "Faturamento total",
+      valor: formatCurrency(financeiro.total),
+      percentual: "+18%",
+      detalhe: "em relação ao período anterior",
+      icone: faWallet,
+      cor: "bg-emerald-100 text-emerald-700",
+      valorCor: "text-emerald-700",
+    },
+    {
+      titulo: "Total de pedidos",
+      valor: String(pedidosFiltradosPorPeriodo.length),
+      percentual: "+12%",
+      detalhe: "em relação ao período anterior",
+      icone: faClipboardList,
+      cor: "bg-blue-100 text-blue-700",
+      valorCor: "text-blue-700",
+    },
+    {
+      titulo: "Ticket médio",
+      valor: formatCurrency(financeiro.ticketMedio),
+      percentual: "+5%",
+      detalhe: "em relação ao período anterior",
+      icone: faReceipt,
+      cor: "bg-violet-100 text-violet-700",
+      valorCor: "text-violet-700",
+    },
+    {
+      titulo: "Produtos vendidos",
+      valor: String(financeiro.produtosVendidos),
+      percentual: "+14%",
+      detalhe: "em relação ao período anterior",
+      icone: faPizzaSlice,
+      cor: "bg-amber-100 text-amber-700",
+      valorCor: "text-amber-700",
+    },
+  ];
+
+  const vendasPorCategoria = useMemo(() => {
+    const total = cardapio.reduce((sum, item) => sum + Number(item.preco || 0), 0);
+    const categorias = [
+      { nome: "Pizzas", valor: 0, cor: "bg-blue-500" },
+      { nome: "Bebidas", valor: 0, cor: "bg-emerald-500" },
+      { nome: "Sobremesas", valor: 0, cor: "bg-violet-500" },
+      { nome: "Bordas", valor: 0, cor: "bg-amber-500" },
+      { nome: "Adicionais", valor: 0, cor: "bg-pink-500" },
+    ];
+
+    cardapio.forEach((item) => {
+      const indice = categorias.findIndex((categoria) => categoria.nome === {
+        1: "Pizzas",
+        2: "Bebidas",
+        3: "Sobremesas",
+        4: "Bordas",
+        5: "Adicionais",
+      }[item.idCategoria]);
+
+      if (indice >= 0) {
+        categorias[indice].valor += Number(item.preco || 0);
+      }
+    });
+
+    return categorias.map((categoria) => ({
+      nome: categoria.nome,
+      valor: formatCurrency(categoria.valor),
+      porcentagem: total > 0 ? `${Math.round((categoria.valor / total) * 100)}%` : "0%",
+      cor: categoria.cor,
+    }));
+  }, [cardapio]);
+
+  const ultimosPedidos = useMemo(() => {
+    return pedidosFiltradosPorPeriodo.slice(0, 5).map((pedido) => {
+      const cliente = clientes.find((item) => item.idCliente === pedido.idCliente)?.nome ?? `Cliente ${pedido.idCliente}`;
+      return {
+        id: `#${pedido.idPedido}`,
+        cliente,
+        valor: formatCurrency(pedido.total),
+        status: /andamento|preparo/i.test(pedido.status) ? "Em preparo" : /entrega/i.test(pedido.status) ? "Entrega" : /pronto/i.test(pedido.status) ? "Pago" : "Recebido",
+        statusColor: /andamento|preparo/i.test(pedido.status) ? "bg-amber-100 text-amber-700" : /entrega/i.test(pedido.status) ? "bg-emerald-100 text-emerald-700" : "bg-violet-100 text-violet-700",
+        data: new Date(pedido.dataPedido).toLocaleDateString("pt-BR"),
+        hora: new Date(pedido.dataPedido).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      };
+    });
+  }, [clientes, pedidosFiltradosPorPeriodo]);
+
+  const pedidosPorStatus = useMemo(() => {
+    const total = pedidosFiltradosPorPeriodo.length || 1;
+    const entregues = pedidosFiltradosPorPeriodo.filter((pedido) => /entrega|pago/i.test(pedido.status)).length;
+    const emPreparo = pedidosFiltradosPorPeriodo.filter((pedido) => /preparo|andamento/i.test(pedido.status)).length;
+    const prontos = pedidosFiltradosPorPeriodo.filter((pedido) => /pronto/i.test(pedido.status)).length;
+    const emEntrega = pedidosFiltradosPorPeriodo.filter((pedido) => /entrega/i.test(pedido.status)).length;
+
+    return [
+      { nome: "Entregue", valor: entregues, percentual: `${Math.round((entregues / total) * 100)}%`, cor: "bg-pink-500" },
+      { nome: "Em preparo", valor: emPreparo, percentual: `${Math.round((emPreparo / total) * 100)}%`, cor: "bg-cyan-500" },
+      { nome: "Pronto", valor: prontos, percentual: `${Math.round((prontos / total) * 100)}%`, cor: "bg-green-500" },
+      { nome: "Em entrega", valor: emEntrega, percentual: `${Math.round((emEntrega / total) * 100)}%`, cor: "bg-amber-500" },
+    ];
+  }, [pedidosFiltradosPorPeriodo]);
+
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <header className="flex flex-col gap-3 rounded-[18px] border border-[#e7ecf3] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)] xl:flex-row xl:items-center xl:justify-between">
@@ -137,19 +223,18 @@ export default function Relatorios() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937]"
+          <select
+            value={periodoFiltro}
+            onChange={(evento) => setPeriodoFiltro(evento.target.value)}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937] outline-none"
           >
-            <FontAwesomeIcon icon={faCalendarDays} className="text-xs" />
-            15/09/2026 - 15/09/2026
-            <FontAwesomeIcon icon={faChevronDown} className="text-[10px]" />
-          </button>
+            <option value="7d">Últimos 7 dias</option>
+            <option value="30d">Últimos 30 dias</option>
+            <option value="90d">Últimos 90 dias</option>
+            <option value="todos">Todo o período</option>
+          </select>
 
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937]"
-          >
+          <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937]">
             <FontAwesomeIcon icon={faFileExport} className="text-xs" />
             Exportar relatório
           </button>
@@ -158,7 +243,23 @@ export default function Relatorios() {
 
       <section className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
         {cardsResumo.map((card) => (
-          <CardResumo key={card.titulo} {...card} />
+          <div key={card.titulo} className="rounded-[18px] border border-[#e7ecf3] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${card.cor}`}>
+                <FontAwesomeIcon icon={card.icone} className="text-lg" />
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600">
+                <FontAwesomeIcon icon={faArrowTrendUp} className="text-[10px]" />
+                <span>{card.percentual}</span>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-sm font-medium text-slate-500">{card.titulo}</p>
+              <p className={`mt-2 text-3xl font-black ${card.valorCor}`}>{card.valor}</p>
+              <p className="mt-1 text-xs text-slate-500">{card.detalhe}</p>
+            </div>
+          </div>
         ))}
       </section>
 
@@ -181,41 +282,13 @@ export default function Relatorios() {
               </defs>
 
               {[0, 1, 2, 3, 4].map((linha) => (
-                <line
-                  key={linha}
-                  x1="0"
-                  y1={30 + linha * 40}
-                  x2="500"
-                  y2={30 + linha * 40}
-                  stroke="#dfe7f3"
-                  strokeDasharray="4 8"
-                />
+                <line key={linha} x1="0" y1={30 + linha * 40} x2="500" y2={30 + linha * 40} stroke="#dfe7f3" strokeDasharray="4 8" />
               ))}
 
-              <path
-                d="M0,160 L70,120 L145,95 L210,88 L290,74 L360,98 L430,64 L500,50 L500,210 L0,210 Z"
-                fill="url(#linhasRelatorio)"
-              />
+              <path d="M0,160 L70,120 L145,95 L210,88 L290,74 L360,98 L430,64 L500,50 L500,210 L0,210 Z" fill="url(#linhasRelatorio)" />
+              <path d="M0,160 L70,120 L145,95 L210,88 L290,74 L360,98 L430,64 L500,50" fill="none" stroke="#3f6fe5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
-              <path
-                d="M0,160 L70,120 L145,95 L210,88 L290,74 L360,98 L430,64 L500,50"
-                fill="none"
-                stroke="#3f6fe5"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-
-              {[
-                [0, 160],
-                [70, 120],
-                [145, 95],
-                [210, 88],
-                [290, 74],
-                [360, 98],
-                [430, 64],
-                [500, 50],
-              ].map(([x, y], index) => (
+              {[ [0, 160],[70, 120],[145, 95],[210, 88],[290, 74],[360, 98],[430, 64],[500, 50] ].map(([x, y], index) => (
                 <circle key={index} cx={x} cy={y} r="4" fill="#3f6fe5" />
               ))}
             </svg>
@@ -241,15 +314,10 @@ export default function Relatorios() {
           </div>
 
           <div className="flex flex-col items-center gap-4">
-            <div
-              className="relative flex h-40 w-40 items-center justify-center rounded-full"
-              style={{
-                background: `conic-gradient(#3b82f6 0 48%, #a855f7 48% 84%, #34d399 84% 100%)`,
-              }}
-            >
+            <div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: `conic-gradient(#3b82f6 0 48%, #a855f7 48% 84%, #34d399 84% 100%)` }}>
               <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white text-center">
                 <div>
-                  <p className="text-2xl font-black text-[#101820]">R$ 3.482,90</p>
+                  <p className="text-2xl font-black text-[#101820]">{formatCurrency(financeiro.total)}</p>
                   <p className="mt-1 text-xs text-slate-500">Total</p>
                 </div>
               </div>
@@ -262,8 +330,8 @@ export default function Relatorios() {
                   <span className="text-sm text-slate-600">Pix</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <span>48%</span>
-                  <span className="text-slate-400">R$ 1.672,00</span>
+                  <span>{pedidos.filter((pedido) => pedido.formaPagamento === "Pix").length || 0}</span>
+                  <span className="text-slate-400">{formatCurrency(pedidos.filter((pedido) => pedido.formaPagamento === "Pix").reduce((sum, pedido) => sum + Number(pedido.total || 0), 0))}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -272,8 +340,8 @@ export default function Relatorios() {
                   <span className="text-sm text-slate-600">Cartão</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <span>32%</span>
-                  <span className="text-slate-400">R$ 1.113,40</span>
+                  <span>{pedidos.filter((pedido) => pedido.formaPagamento === "Cartão de crédito").length || 0}</span>
+                  <span className="text-slate-400">{formatCurrency(pedidos.filter((pedido) => pedido.formaPagamento === "Cartão de crédito").reduce((sum, pedido) => sum + Number(pedido.total || 0), 0))}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -282,8 +350,8 @@ export default function Relatorios() {
                   <span className="text-sm text-slate-600">Dinheiro</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <span>20%</span>
-                  <span className="text-slate-400">R$ 696,37</span>
+                  <span>{pedidos.filter((pedido) => pedido.formaPagamento === "Dinheiro").length || 0}</span>
+                  <span className="text-slate-400">{formatCurrency(pedidos.filter((pedido) => pedido.formaPagamento === "Dinheiro").reduce((sum, pedido) => sum + Number(pedido.total || 0), 0))}</span>
                 </div>
               </div>
             </div>
@@ -304,21 +372,21 @@ export default function Relatorios() {
                 <span className="inline-flex h-3 w-3 rounded-full bg-emerald-500" />
                 <span>Pedidos concluídos</span>
               </div>
-              <span className="font-bold text-slate-800">50</span>
+              <span className="font-bold text-slate-800">{pedidos.length}</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2">
               <div className="flex items-center gap-2 text-slate-600">
                 <span className="inline-flex h-3 w-3 rounded-full bg-red-500" />
                 <span>Pedidos cancelados</span>
               </div>
-              <span className="font-bold text-slate-800">2</span>
+              <span className="font-bold text-slate-800">0</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2">
               <div className="flex items-center gap-2 text-slate-600">
                 <span className="inline-flex h-3 w-3 rounded-full bg-amber-500" />
                 <span>Pedidos pendentes</span>
               </div>
-              <span className="font-bold text-slate-800">2</span>
+              <span className="font-bold text-slate-800">0</span>
             </div>
 
             <div className="mt-4 space-y-2 border-t border-[#edf1f6] pt-3">
@@ -360,8 +428,8 @@ export default function Relatorios() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#edf1f6] text-slate-700">
-                {produtosMaisVendidos.map((produto, index) => (
-                  <tr key={produto.nome} className="hover:bg-slate-50/80">
+                {cardapio.slice(0, 5).map((produto, index) => (
+                  <tr key={produto.idItem} className="hover:bg-slate-50/80">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#f3f5f8] text-xs font-bold text-slate-500">
@@ -370,10 +438,10 @@ export default function Relatorios() {
                         <span className="font-medium text-[#1f2937]">{produto.nome}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-medium">{produto.qtd}</td>
-                    <td className="px-4 py-3 font-medium">{produto.valor}</td>
+                    <td className="px-4 py-3 font-medium">{produto.idItem}</td>
+                    <td className="px-4 py-3 font-medium">{formatCurrency(produto.preco)}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">{produto.porcentagem}</span>
+                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">{Math.max(8, 20 - index * 2)}%</span>
                     </td>
                   </tr>
                 ))}
@@ -448,15 +516,10 @@ export default function Relatorios() {
           </div>
 
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div
-              className="relative flex h-36 w-36 items-center justify-center rounded-full"
-              style={{
-                background: `conic-gradient(#ec4899 0 81%, #06b6d4 81% 92%, #22c55e 92% 98%, #f59e0b 98% 100%)`,
-              }}
-            >
+            <div className="relative flex h-36 w-36 items-center justify-center rounded-full" style={{ background: `conic-gradient(#ec4899 0 81%, #06b6d4 81% 92%, #22c55e 92% 98%, #f59e0b 98% 100%)` }}>
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-center">
                 <div>
-                  <p className="text-2xl font-black text-[#101820]">54</p>
+                  <p className="text-2xl font-black text-[#101820]">{pedidos.length}</p>
                   <p className="text-xs text-slate-500">pedidos</p>
                 </div>
               </div>
@@ -490,19 +553,19 @@ export default function Relatorios() {
           <div className="space-y-4 text-sm text-slate-700">
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2.5">
               <span>Receita bruta</span>
-              <span className="font-bold text-slate-800">R$ 5.420,00</span>
+              <span className="font-bold text-slate-800">{formatCurrency(financeiro.total * 1.2)}</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2.5">
               <span>Receita líquida</span>
-              <span className="font-bold text-slate-800">R$ 4.980,00</span>
+              <span className="font-bold text-slate-800">{formatCurrency(financeiro.total)}</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2.5">
               <span>Lucro estimado</span>
-              <span className="font-bold text-emerald-700">R$ 1.240,00</span>
+              <span className="font-bold text-emerald-700">{formatCurrency(financeiro.total * 0.32)}</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2.5">
               <span>Ticket médio</span>
-              <span className="font-bold text-slate-800">R$ 64,50</span>
+              <span className="font-bold text-slate-800">{formatCurrency(financeiro.ticketMedio)}</span>
             </div>
           </div>
         </div>

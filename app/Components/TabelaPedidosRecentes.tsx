@@ -1,63 +1,72 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faClipboardList, faChevronRight, faTruck, faStore, faBox } from "@fortawesome/free-solid-svg-icons"
 
-interface PedidoRecenteProps {
-    onVerTodos?: () => void
+interface PedidoRecenteJson {
+    idPedido: number
+    idCliente: number
+    dataPedido: string
+    total: number
+    status: string
+    tipoEntrega?: string
 }
 
-export default function TabelaPedidosRecentes({ onVerTodos }: PedidoRecenteProps) {
-    const pedidos = [
+interface ClienteJson {
+    idCliente: number
+    nome: string
+}
+
+interface PedidoRecenteProps {
+    onVerTodos?: () => void
+    pedidos?: PedidoRecenteJson[]
+    clientes?: ClienteJson[]
+}
+
+export default function TabelaPedidosRecentes({ onVerTodos, pedidos = [], clientes = [] }: PedidoRecenteProps) {
+    const pedidosPadrao = [
         {
-            id: "#1024",
-            cliente: "João Silva",
-            tipo: "Entrega",
-            iconeTipo: faTruck,
-            valor: "R$ 72,90",
+            idPedido: 1024,
+            idCliente: 1,
+            dataPedido: "2026-09-15T14:32:00",
+            total: 72.9,
             status: "Em preparo",
-            tipoStatus: "warning",
-            horario: "14:20"
+            tipoEntrega: "Entrega",
         },
         {
-            id: "#1023",
-            cliente: "Maria Souza",
-            tipo: "Retirada",
-            iconeTipo: faStore,
-            valor: "R$ 54,00",
+            idPedido: 1023,
+            idCliente: 2,
+            dataPedido: "2026-09-15T14:15:00",
+            total: 54,
             status: "Pronto",
-            tipoStatus: "success",
-            horario: "13:47"
+            tipoEntrega: "Retirada",
         },
         {
-            id: "#1022",
-            cliente: "Pedro Santos",
-            tipo: "Entrega",
-            iconeTipo: faTruck,
-            valor: "R$ 89,90",
+            idPedido: 1022,
+            idCliente: 3,
+            dataPedido: "2026-09-15T13:47:00",
+            total: 89.9,
             status: "Em entrega",
-            tipoStatus: "info",
-            horario: "13:32"
-        },
-        {
-            id: "#1021",
-            cliente: "Ana Lima",
-            tipo: "Balcão",
-            iconeTipo: faBox,
-            valor: "R$ 46,50",
-            status: "Finalizado",
-            tipoStatus: "danger",
-            horario: "12:58"
-        },
-        {
-            id: "#1020",
-            cliente: "Carlos Oliveira",
-            tipo: "Entrega",
-            iconeTipo: faTruck,
-            valor: "R$ 67,80",
-            status: "Pronto",
-            tipoStatus: "success",
-            horario: "12:41"
+            tipoEntrega: "Entrega",
         },
     ]
+
+    const pedidosAtivos = pedidos.length > 0 ? pedidos : pedidosPadrao
+    const clientesMap = new Map(clientes.map((cliente) => [cliente.idCliente, cliente.nome]))
+
+    const pedidosFormatados = pedidosAtivos.slice(0, 6).map((pedido) => {
+        const horario = new Date(pedido.dataPedido).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false })
+        const nomeCliente = clientesMap.get(pedido.idCliente) ?? `Cliente ${pedido.idCliente}`
+
+        return {
+            id: `#${pedido.idPedido}`,
+            cliente: nomeCliente,
+            tipo: pedido.tipoEntrega === "Retirada" ? "Retirada" : "Entrega",
+            iconeTipo: pedido.tipoEntrega === "Retirada" ? faStore : faTruck,
+            valor: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(pedido.total),
+            status: pedido.status,
+            tipoStatus: /preparo|andamento/i.test(pedido.status) ? "warning" : /pronto|pago/i.test(pedido.status) ? "success" : /entrega/i.test(pedido.status) ? "info" : "danger",
+            horario,
+        }
+    })
 
     function renderizarBadgeStatus(status: string, tipo: string) {
         let classes = "bg-slate-100 text-slate-600"
@@ -86,7 +95,7 @@ export default function TabelaPedidosRecentes({ onVerTodos }: PedidoRecenteProps
                 <button
                     type="button"
                     onClick={onVerTodos}
-                    className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1"
+                    className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:underline"
                 >
                     Ver todos <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
                 </button>
@@ -94,8 +103,8 @@ export default function TabelaPedidosRecentes({ onVerTodos }: PedidoRecenteProps
 
             {/* Conteúdo da Tabela */}
             <div className="w-full min-w-0 overflow-x-auto">
-                <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-                    <thead className="bg-slate-50/70 text-xs font-semibold uppercase text-slate-500 border-b border-slate-100">
+                <table className="w-full min-w-190 border-collapse text-left text-sm">
+                    <thead className="border-b border-slate-100 bg-slate-50/70 text-xs font-semibold uppercase text-slate-500">
                         <tr>
                             <th className="px-6 py-3.5">Nº Pedido</th>
                             <th className="px-6 py-3.5">Cliente</th>
@@ -107,25 +116,25 @@ export default function TabelaPedidosRecentes({ onVerTodos }: PedidoRecenteProps
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-600">
-                        {pedidos.map((pedido) => (
+                        {pedidosFormatados.map((pedido) => (
                             <tr key={pedido.id} className="transition-colors hover:bg-slate-50/60">
-                                <td className="px-6 py-4 font-bold text-slate-800 whitespace-nowrap">{pedido.id}</td>
-                                <td className="px-6 py-4 font-medium text-slate-800 whitespace-nowrap">{pedido.cliente}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="whitespace-nowrap px-6 py-4 font-bold text-slate-800">{pedido.id}</td>
+                                <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-800">{pedido.cliente}</td>
+                                <td className="whitespace-nowrap px-6 py-4">
                                     <div className="inline-flex items-center gap-2">
-                                        <FontAwesomeIcon icon={pedido.iconeTipo} className="text-slate-400 text-xs" />
+                                        <FontAwesomeIcon icon={pedido.iconeTipo} className="text-xs text-slate-400" />
                                         <span>{pedido.tipo}</span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 font-semibold text-slate-800 whitespace-nowrap">{pedido.valor}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="whitespace-nowrap px-6 py-4 font-semibold text-slate-800">{pedido.valor}</td>
+                                <td className="whitespace-nowrap px-6 py-4">
                                     {renderizarBadgeStatus(pedido.status, pedido.tipoStatus)}
                                 </td>
-                                <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{pedido.horario}</td>
-                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                <td className="whitespace-nowrap px-6 py-4 text-slate-500">{pedido.horario}</td>
+                                <td className="whitespace-nowrap px-6 py-4 text-right">
                                     <button
                                         type="button"
-                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
                                     >
                                         <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
                                     </button>

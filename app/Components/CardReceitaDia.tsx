@@ -1,7 +1,17 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faCoins, faArrowUp } from "@fortawesome/free-solid-svg-icons"
 
-export default function CardReceitaDia() {
+interface CardReceitaDiaProps {
+    valor?: number
+    percentual?: number
+}
+
+export default function CardReceitaDia({ valor = 682.4, percentual = 15 }: CardReceitaDiaProps) {
+    const valorFormatado = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+    }).format(valor)
+
     return (
         <div className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             {/* Cabeçalho */}
@@ -15,10 +25,12 @@ export default function CardReceitaDia() {
             {/* Valor e Estatística */}
             <div className="flex items-end justify-between">
                 <div>
-                    <span className="text-xl font-black text-slate-900 sm:text-2xl">R$ 682,40</span>
+                    <span className="text-xl font-black text-slate-900 sm:text-2xl">{valorFormatado}</span>
                     <div className="flex items-center gap-1.5 mt-1 text-xs font-semibold text-emerald-600">
                         <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
-                        <span>15% <span className="font-normal text-slate-500">em relação a ontem</span></span>
+                        <span>
+                            {percentual}% <span className="font-normal text-slate-500">em relação a ontem</span>
+                        </span>
                     </div>
                 </div>
 
