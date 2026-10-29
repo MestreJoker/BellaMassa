@@ -28,7 +28,7 @@ export default function Home() {
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Header alternarMenuMobile={() => setMenuMobileAberto((aberto) => !aberto)} />
-        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#ebf0f6] p-3 sm:p-4 md:p-5 lg:p-6">
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain p-3 sm:p-4 md:p-5 lg:p-6">
             {paginaAtual == 0 && <Dashboard />}
             {paginaAtual == 1 && <Pedido />}
             {paginaAtual == 2 && <Clientes />}
