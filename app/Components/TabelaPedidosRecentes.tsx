@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faClipboardList, faChevronRight, faTruck, faStore, faBox } from "@fortawesome/free-solid-svg-icons"
+import { faClipboardList, faChevronRight, faTruck, faStore } from "@fortawesome/free-solid-svg-icons"
 
 interface PedidoRecenteJson {
     idPedido: number
@@ -22,37 +22,9 @@ interface PedidoRecenteProps {
 }
 
 export default function TabelaPedidosRecentes({ onVerTodos, pedidos = [], clientes = [] }: PedidoRecenteProps) {
-    const pedidosPadrao = [
-        {
-            idPedido: 1024,
-            idCliente: 1,
-            dataPedido: "2026-09-15T14:32:00",
-            total: 72.9,
-            status: "Em preparo",
-            tipoEntrega: "Entrega",
-        },
-        {
-            idPedido: 1023,
-            idCliente: 2,
-            dataPedido: "2026-09-15T14:15:00",
-            total: 54,
-            status: "Pronto",
-            tipoEntrega: "Retirada",
-        },
-        {
-            idPedido: 1022,
-            idCliente: 3,
-            dataPedido: "2026-09-15T13:47:00",
-            total: 89.9,
-            status: "Em entrega",
-            tipoEntrega: "Entrega",
-        },
-    ]
-
-    const pedidosAtivos = pedidos.length > 0 ? pedidos : pedidosPadrao
     const clientesMap = new Map(clientes.map((cliente) => [cliente.idCliente, cliente.nome]))
 
-    const pedidosFormatados = pedidosAtivos.slice(0, 6).map((pedido) => {
+    const pedidosFormatados = pedidos.slice(0, 6).map((pedido) => {
         const horario = new Date(pedido.dataPedido).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false })
         const nomeCliente = clientesMap.get(pedido.idCliente) ?? `Cliente ${pedido.idCliente}`
 
@@ -95,6 +67,7 @@ export default function TabelaPedidosRecentes({ onVerTodos, pedidos = [], client
                 <button
                     type="button"
                     onClick={onVerTodos}
+                    disabled={!onVerTodos}
                     className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:underline"
                 >
                     Ver todos <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
@@ -116,7 +89,11 @@ export default function TabelaPedidosRecentes({ onVerTodos, pedidos = [], client
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-600">
-                        {pedidosFormatados.map((pedido) => (
+                        {pedidosFormatados.length === 0 ? (
+                            <tr>
+                                <td colSpan={7} className="px-5 py-8 text-center text-slate-500">Nenhum pedido registrado.</td>
+                            </tr>
+                        ) : pedidosFormatados.map((pedido) => (
                             <tr key={pedido.id} className="transition-colors hover:bg-slate-50/60">
                                 <td className="whitespace-nowrap px-6 py-4 font-bold text-slate-800">{pedido.id}</td>
                                 <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-800">{pedido.cliente}</td>
@@ -134,6 +111,8 @@ export default function TabelaPedidosRecentes({ onVerTodos, pedidos = [], client
                                 <td className="whitespace-nowrap px-6 py-4 text-right">
                                     <button
                                         type="button"
+                                        onClick={onVerTodos}
+                                        aria-label={`Abrir pedido ${pedido.id}`}
                                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
                                     >
                                         <FontAwesomeIcon icon={faChevronRight} className="text-xs" />

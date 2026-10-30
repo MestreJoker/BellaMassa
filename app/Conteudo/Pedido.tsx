@@ -6,6 +6,7 @@ import ModalMontagemPizza from "../Components/ModalMontagemPizza"
 import CarrinhoPedido from "../Components/CarrinhoPedido"
 import CheckoutPedido from "../Components/CheckoutPedido"
 import CatalogoProdutos from "../Components/CatalogoProdutos"
+import { obterPedidos, salvarPedidos, type PedidoLocal } from "../lib/pedidos"
 
 interface ItemCarrinho {
     id: number | string
@@ -31,27 +32,18 @@ interface ItemCarrinho {
         precoBase: number
     }
 
-export default function Pedido() {
+    interface PedidoProps {
+        onVoltarPedidos: () => void
+    }
+
+        export default function Pedido({ onVoltarPedidos }: PedidoProps) {
     // Estados principais da página
-    const [clienteId, setClienteId] = useState<number>(1) // João Silva por padrão
-    const [itensCarrinho, setItensCarrinho] = useState<ItemCarrinho[]>([
-        {
-            id: 1,
-            nome: "Pizza Média",
-            detalhes: "Calabresa + Frango\nBorda Catupiry\nAdicionais: Bacon",
-            quantidade: 1,
-            precoUnitario: 58.90
-        },
-        {
-            id: 9,
-            nome: "Coca-Cola 2L",
-            detalhes: "Quantidade: 1",
-            quantidade: 1,
-            precoUnitario: 12.00
-        }
-    ])
-    const [desconto] = useState(5.00)
+        const [clienteId, setClienteId] = useState<number>(0)
+        const [itensCarrinho, setItensCarrinho] = useState<ItemCarrinho[]>([])
+        const [desconto] = useState(0)
     const [taxaEntrega] = useState(7.00)
+        const [tipoEntrega, setTipoEntrega] = useState("")
+    const [mensagemPedido, setMensagemPedido] = useState("")
 
     // Funções do Carrinho
         function adicionarItemGenerico(item: ProdutoCardapioPedido) {
@@ -105,8 +97,51 @@ export default function Pedido() {
 
     const subtotal = itensCarrinho.reduce((acc, item) => acc + (item.precoUnitario * item.quantidade), 0)
 
-    function confirmarPedido(dadosCheckout: { tipoEntrega: string; formaPagamento: string }) {
-        alert(`Pedido confirmado com sucesso!\nTipo: ${dadosCheckout.tipoEntrega}\nPagamento: ${dadosCheckout.formaPagamento}`)
+    async function confirmarPedido(dadosCheckout: { tipoEntrega: string; formaPagamento: string }) {
+        setMensagemPedido("")
+        if (itensCarrinho.length === 0) {
+            setMensagemPedido("Adicione pelo menos um item antes de confirmar o pedido.")
+            return
+        }
+        if (clienteId === 0) {
+            setMensagemPedido("Selecione um cliente antes de confirmar o pedido.")
+            return
+        }
+        if (!dadosCheckout.tipoEntrega || !dadosCheckout.formaPagamento) {
+            setMensagemPedido("Escolha entrega ou retirada e uma forma de pagamento.")
+            return
+        }
+
+        try {
+            const pedidosExistentes = await obterPedidos()
+            const valorEntrega = dadosCheckout.tipoEntrega === "Entrega" ? taxaEntrega : 0
+            const novoPedido: PedidoLocal = {
+                idPedido: Math.max(0, ...pedidosExistentes.map((pedido) => pedido.idPedido)) + 1,
+                idCliente: clienteId,
+                dataPedido: new Date().toISOString(),
+                itens: itensCarrinho.map((item) => ({
+                    tipo: item.nome.startsWith("Pizza") ? "Pizza" : "Produto",
+                    nome: item.nome,
+                    detalhes: item.detalhes,
+                    quantidade: item.quantidade,
+                    precoTotalItem: item.precoUnitario * item.quantidade,
+                })),
+                subtotal,
+                taxaEntrega: valorEntrega,
+                desconto,
+                total: Math.max(0, subtotal + valorEntrega - desconto),
+                tipoEntrega: dadosCheckout.tipoEntrega,
+                formaPagamento: dadosCheckout.formaPagamento === "Cartão" ? "Cartão de crédito" : dadosCheckout.formaPagamento,
+                statusPagamento: "Pendente",
+                status: "Em andamento",
+            }
+
+            salvarPedidos([novoPedido, ...pedidosExistentes])
+            setItensCarrinho([])
+            setMensagemPedido(`Pedido #${novoPedido.idPedido} confirmado e salvo.`)
+        } catch {
+            setMensagemPedido("Não foi possível salvar o pedido. Tente novamente.")
+        }
     }
 
     return (
@@ -116,6 +151,8 @@ export default function Pedido() {
                 <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                     <button
                         type="button"
+                        onClick={onVoltarPedidos}
+                        aria-label="Voltar para pedidos"
                         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
                     >
                         <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
@@ -131,7 +168,7 @@ export default function Pedido() {
                         <FontAwesomeIcon icon={faCalendarAlt} className="text-slate-400 text-xs" />
                         <span className="font-medium">15 de Setembro de 2026</span>
                     </div>
-                    <div className="h-4 w-[1px] bg-slate-200"></div>
+                    <div className="h-4 w-px bg-slate-200"></div>
                     <div className="flex items-center gap-2">
                         <FontAwesomeIcon icon={faClock} className="text-slate-400 text-xs" />
                         <span className="font-medium">14:32</span>
@@ -167,13 +204,19 @@ export default function Pedido() {
                         onRemoverItem={removerItem}
                         onLimparCarrinho={limparCarrinho}
                         subtotal={subtotal}
-                        taxaEntrega={taxaEntrega}
+                        taxaEntrega={tipoEntrega === "Entrega" && itensCarrinho.length > 0 ? taxaEntrega : 0}
                         desconto={desconto}
                     />
 
                     <CheckoutPedido
                         onConfirmarPedido={confirmarPedido}
+                        onTipoEntregaChange={setTipoEntrega}
                     />
+                    {mensagemPedido && (
+                        <p role="status" className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                            {mensagemPedido}
+                        </p>
+                    )}
                 </div>
 
             </div>

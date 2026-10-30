@@ -32,9 +32,9 @@ export default function ModalMontagemPizza({ onAdicionarPizzaPersonalizada }: Mo
     const [tamanhos, setTamanhos] = useState<TamanhoProps[]>([])
     const [tamanhoSelecionado, setTamanhoSelecionado] = useState<TamanhoProps | null>(null)
     const [saboresCardapio, setSaboresCardapio] = useState<ItemCardapioProps[]>([])
-    const [saboresSelecionados, setSaboresSelecionados] = useState<string[]>(["Calabresa"])
-    const [bordaSelecionada, setBordaSelecionada] = useState("Catupiry (+ R$ 8,00)")
-    const [adicionaisSelecionados, setAdicionaisSelecionados] = useState<string[]>(["Bacon"])
+    const [saboresSelecionados, setSaboresSelecionados] = useState<string[]>([])
+    const [bordaSelecionada, setBordaSelecionada] = useState("")
+    const [adicionaisSelecionados, setAdicionaisSelecionados] = useState<string[]>([])
     const [termoBuscaSabor, setTermoBuscaSabor] = useState("")
 
     useEffect(() => {
@@ -45,9 +45,6 @@ export default function ModalMontagemPizza({ onAdicionarPizzaPersonalizada }: Mo
                     Axios.get<ItemCardapioProps[]>("/json/cardapio.json")
                 ])
                 setTamanhos(resTamanhos.data)
-                if (resTamanhos.data.length > 1) {
-                    setTamanhoSelecionado(resTamanhos.data[1]) // Média por padrão
-                }
                 // Filtrar apenas pizzas (idCategoria === 1)
                 const pizzas = resCardapio.data.filter(item => item.idCategoria === 1)
                 setSaboresCardapio(pizzas)
@@ -60,9 +57,7 @@ export default function ModalMontagemPizza({ onAdicionarPizzaPersonalizada }: Mo
 
     function alternarSabor(nomeSabor: string) {
         if (saboresSelecionados.includes(nomeSabor)) {
-            if (saboresSelecionados.length > 1) {
-                setSaboresSelecionados(saboresSelecionados.filter(s => s !== nomeSabor))
-            }
+            setSaboresSelecionados(saboresSelecionados.filter(s => s !== nomeSabor))
         } else {
             if (saboresSelecionados.length < 2) {
                 setSaboresSelecionados([...saboresSelecionados, nomeSabor])
@@ -167,6 +162,7 @@ export default function ModalMontagemPizza({ onAdicionarPizzaPersonalizada }: Mo
                     onChange={(e) => setBordaSelecionada(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 text-xs text-slate-700 outline-none focus:border-slate-400"
                 >
+                    <option value="" disabled>Selecione a borda</option>
                     <option value="Catupiry (+ R$ 8,00)">Catupiry (+ R$ 8,00)</option>
                     <option value="Cheddar (+ R$ 8,00)">Cheddar (+ R$ 8,00)</option>
                     <option value="Chocolate (+ R$ 10,00)">Chocolate (+ R$ 10,00)</option>
@@ -198,8 +194,9 @@ export default function ModalMontagemPizza({ onAdicionarPizzaPersonalizada }: Mo
             {/* Botão de Adicionar ao Pedido */}
             <button
                 type="button"
+                disabled={!tamanhoSelecionado || saboresSelecionados.length === 0}
                 onClick={() => {
-                    if (tamanhoSelecionado) {
+                    if (tamanhoSelecionado && saboresSelecionados.length > 0) {
                         onAdicionarPizzaPersonalizada({
                             tamanho: tamanhoSelecionado,
                             sabores: saboresSelecionados,
@@ -209,10 +206,10 @@ export default function ModalMontagemPizza({ onAdicionarPizzaPersonalizada }: Mo
                         })
                     }
                 }}
-                className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-3 text-xs flex items-center justify-center gap-2 transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
                 <FontAwesomeIcon icon={faPlus} className="text-xs" />
-                Adicionar mais itens
+                Adicionar pizza ao pedido
             </button>
         </div>
     )

@@ -4,11 +4,12 @@ import { faTruck, faStore, faQrcode, faCreditCard, faMoneyBillWave, faCheck } fr
 
 interface CheckoutProps {
     onConfirmarPedido: (dados: { tipoEntrega: string; formaPagamento: string }) => void
+    onTipoEntregaChange?: (tipoEntrega: string) => void
 }
 
-export default function CheckoutPedido({ onConfirmarPedido }: CheckoutProps) {
-    const [tipoEntrega, setTipoEntrega] = useState("Entrega") // "Entrega" ou "Retirada"
-    const [formaPagamento, setFormaPagamento] = useState("Pix") // "Pix", "Cartão", "Dinheiro"
+export default function CheckoutPedido({ onConfirmarPedido, onTipoEntregaChange }: CheckoutProps) {
+    const [tipoEntrega, setTipoEntrega] = useState("")
+    const [formaPagamento, setFormaPagamento] = useState("")
 
     return (
         <div className="mt-4 flex w-full min-w-0 flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm font-sans sm:gap-5 sm:p-6">
@@ -18,7 +19,10 @@ export default function CheckoutPedido({ onConfirmarPedido }: CheckoutProps) {
                 <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-3">
                     <button
                         type="button"
-                        onClick={() => setTipoEntrega("Entrega")}
+                        onClick={() => {
+                            setTipoEntrega("Entrega")
+                            onTipoEntregaChange?.("Entrega")
+                        }}
                         className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-xs font-semibold transition-all ${
                             tipoEntrega === "Entrega"
                                 ? "border-rose-600 bg-rose-50/20 text-rose-700 shadow-sm"
@@ -30,7 +34,10 @@ export default function CheckoutPedido({ onConfirmarPedido }: CheckoutProps) {
                     </button>
                     <button
                         type="button"
-                        onClick={() => setTipoEntrega("Retirada")}
+                        onClick={() => {
+                            setTipoEntrega("Retirada")
+                            onTipoEntregaChange?.("Retirada")
+                        }}
                         className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-xs font-semibold transition-all ${
                             tipoEntrega === "Retirada"
                                 ? "border-rose-600 bg-rose-50/20 text-rose-700 shadow-sm"
@@ -76,7 +83,8 @@ export default function CheckoutPedido({ onConfirmarPedido }: CheckoutProps) {
             <button
                 type="button"
                 onClick={() => onConfirmarPedido({ tipoEntrega, formaPagamento })}
-                className="w-full rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 text-xs flex items-center justify-center gap-2 shadow-md transition-colors"
+                disabled={!tipoEntrega || !formaPagamento}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 py-3.5 text-xs font-bold text-white shadow-md transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-45"
             >
                 <FontAwesomeIcon icon={faCheck} className="text-sm" />
                 Confirmar Pedido

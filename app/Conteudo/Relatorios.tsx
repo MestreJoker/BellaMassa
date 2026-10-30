@@ -5,8 +5,6 @@ import Axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowTrendUp,
-  faCalendarDays,
-  faChevronDown,
   faClipboardList,
   faFileExport,
   faFilter,
@@ -15,6 +13,8 @@ import {
   faTruck,
   faWallet,
 } from "@fortawesome/free-solid-svg-icons";
+import { obterPedidos } from "../lib/pedidos";
+import { exportarCsv } from "../lib/exportarCsv";
 
 interface ClienteJson {
   idCliente: number;
@@ -45,25 +45,30 @@ interface CardapioJson {
   descricao: string;
 }
 
+interface RelatoriosProps {
+  onVerTodosPedidos: () => void
+  onVerProdutos: () => void
+}
+
 const formatCurrency = (valor: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
 
-export default function Relatorios() {
+export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: RelatoriosProps) {
   const [pedidos, setPedidos] = useState<PedidoJson[]>([]);
   const [clientes, setClientes] = useState<ClienteJson[]>([]);
   const [cardapio, setCardapio] = useState<CardapioJson[]>([]);
-  const [periodoFiltro, setPeriodoFiltro] = useState("30d");
+  const [periodoFiltro, setPeriodoFiltro] = useState("todos");
 
   useEffect(() => {
     async function carregarDados() {
       try {
         const [pedidosResponse, clientesResponse, cardapioResponse] = await Promise.all([
-          Axios.get<PedidoJson[]>("/json/pedidos.json"),
+          obterPedidos(),
           Axios.get<ClienteJson[]>("/json/clientes.json"),
           Axios.get<CardapioJson[]>("/json/cardapio.json"),
         ]);
 
-        setPedidos(pedidosResponse.data);
+        setPedidos(pedidosResponse);
         setClientes(clientesResponse.data);
         setCardapio(cardapioResponse.data);
       } catch (erro) {
@@ -234,7 +239,23 @@ export default function Relatorios() {
             <option value="todos">Todo o período</option>
           </select>
 
-          <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937]">
+          <button
+            type="button"
+            onClick={() => exportarCsv(
+              "relatorio-pedidos.csv",
+              ["Pedido", "Cliente", "Data", "Status", "Tipo", "Pagamento", "Total"],
+              pedidosFiltradosPorPeriodo.map((pedido) => [
+                pedido.idPedido,
+                clientes.find((cliente) => cliente.idCliente === pedido.idCliente)?.nome ?? `Cliente ${pedido.idCliente}`,
+                new Date(pedido.dataPedido).toLocaleString("pt-BR"),
+                pedido.status,
+                pedido.tipoEntrega,
+                pedido.formaPagamento,
+                formatCurrency(pedido.total),
+              ]),
+            )}
+            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937]"
+          >
             <FontAwesomeIcon icon={faFileExport} className="text-xs" />
             Exportar relatório
           </button>
@@ -412,7 +433,7 @@ export default function Relatorios() {
               </div>
               <h2 className="text-2xl font-black text-[#101820]">Produtos mais vendidos</h2>
             </div>
-            <button type="button" className="text-sm font-semibold text-[#2c66d8]">
+            <button type="button" onClick={onVerProdutos} className="text-sm font-semibold text-[#2c66d8]">
               Ver todos →
             </button>
           </div>
@@ -481,7 +502,7 @@ export default function Relatorios() {
               </div>
               <h2 className="text-2xl font-black text-[#101820]">Últimos pedidos</h2>
             </div>
-            <button type="button" className="text-sm font-semibold text-[#2c66d8]">
+            <button type="button" onClick={onVerTodosPedidos} className="text-sm font-semibold text-[#2c66d8]">
               Ver todos →
             </button>
           </div>

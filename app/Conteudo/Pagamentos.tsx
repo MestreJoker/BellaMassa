@@ -5,11 +5,9 @@ import Axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowUp,
-    faCalendarDays,
-    faChevronDown,
+    faCheck,
     faCreditCard,
     faDollarSign,
-    faEllipsis,
     faFileExport,
     faFilter,
     faMagnifyingGlass,
@@ -17,31 +15,54 @@ import {
     faReceipt,
     faWallet,
 } from "@fortawesome/free-solid-svg-icons";
+import { obterPedidos, salvarPedidos, type PedidoLocal } from "../lib/pedidos";
+import { exportarCsv } from "../lib/exportarCsv";
 
 interface ClienteJson {
     idCliente: number;
     nome: string;
 }
 
-interface PedidoJson {
-    idPedido: number;
-    idCliente: number;
-    total: number;
-    formaPagamento: string;
-    status: string;
-    tipoEntrega: string;
-    dataPedido: string;
-}
-
 const formatCurrency = (valor: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
 
 export default function Pagamentos() {
-    const [pedidos, setPedidos] = useState<PedidoJson[]>([]);
+    const [pedidos, setPedidos] = useState<PedidoLocal[]>([]);
     const [clientes, setClientes] = useState<ClienteJson[]>([]);
     const [pesquisa, setPesquisa] = useState("");
     const [statusFiltro, setStatusFiltro] = useState("Todos");
-    const [periodoFiltro, setPeriodoFiltro] = useState("30d");
+    const [periodoFiltro, setPeriodoFiltro] = useState("todos");
+
+    useEffect(() => {
+        async function carregarDados() {
+            try {
+                const [pedidosCarregados, respostaClientes] = await Promise.all([
+                    obterPedidos(),
+                    Axios.get<ClienteJson[]>("/json/clientes.json"),
+                ]);
+                setPedidos(pedidosCarregados);
+                setClientes(respostaClientes.data);
+            } catch (erro) {
+                console.error("Não foi possível carregar os pagamentos.", erro);
+            }
+        }
+
+        carregarDados();
+    }, []);
+
+    function estaPago(pedido: PedidoLocal) {
+        return pedido.statusPagamento
+            ? pedido.statusPagamento === "Pago"
+            : /pago|entregue|retirado|finalizado/i.test(pedido.status);
+    }
+
+    function marcarComoPago(idPedido: number) {
+        const pedidosAtualizados = pedidos.map((pedido) => pedido.idPedido === idPedido
+            ? { ...pedido, statusPagamento: "Pago" }
+            : pedido);
+        setPedidos(pedidosAtualizados);
+        salvarPedidos(pedidosAtualizados);
+    }
 
     const pedidosFiltradosPorPeriodo = useMemo(() => {
         if (periodoFiltro === "todos") return pedidos;
@@ -64,10 +85,11 @@ export default function Pagamentos() {
     const pedidosFormatados = useMemo(() => {
         return pedidosFiltradosPorPeriodo.map((pedido) => {
             const clienteNome = clientesMap.get(pedido.idCliente) ?? `Cliente ${pedido.idCliente}`;
-            const statusNormalizado = /pendente/i.test(pedido.status) ? "Pendente" : "Pago";
+            const statusNormalizado = estaPago(pedido) ? "Pago" : "Pendente";
 
             return {
                 id: `#${pedido.idPedido}`,
+                idPedido: pedido.idPedido,
                 cliente: clienteNome,
                 valor: formatCurrency(pedido.total),
                 forma: pedido.formaPagamento ?? "Pix",
@@ -103,7 +125,9 @@ export default function Pagamentos() {
         });
     }, [pesquisa, pedidosFormatados, statusFiltro]);
 
-    const totalRecebido = pedidosFiltradosPorPeriodo.reduce((total, pedido) => total + Number(pedido.total || 0), 0);
+    const totalRecebido = pedidosFiltradosPorPeriodo
+        .filter(estaPago)
+        .reduce((total, pedido) => total + Number(pedido.total || 0), 0);
     const totalPedidos = pedidosFiltradosPorPeriodo.length;
     const pagamentosPix = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.formaPagamento === "Pix").length;
     const pagamentosCartao = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.formaPagamento === "Cartão de crédito").length;
@@ -180,6 +204,11 @@ export default function Pagamentos() {
 
                     <button
                         type="button"
+                        onClick={() => exportarCsv(
+                            "pagamentos.csv",
+                            ["Pedido", "Cliente", "Valor", "Forma", "Status", "Data", "Hora"],
+                            pedidosFiltrados.map((pedido) => [pedido.id, pedido.cliente, pedido.valor, pedido.forma, pedido.status, pedido.data, pedido.horario]),
+                        )}
                         className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6ef] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937]"
                     >
                         <FontAwesomeIcon icon={faFileExport} className="text-xs" />
@@ -302,9 +331,13 @@ export default function Pagamentos() {
                                         <td className="px-5 py-4 text-right">
                                             <button
                                                 type="button"
-                                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#e5e7eb] bg-white text-slate-500 transition-colors hover:bg-slate-100"
+                                                onClick={() => marcarComoPago(pagamento.idPedido)}
+                                                disabled={pagamento.status === "Pago"}
+                                                aria-label={pagamento.status === "Pago" ? `Pagamento ${pagamento.id} já pago` : `Marcar pagamento ${pagamento.id} como pago`}
+                                                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-default disabled:opacity-60"
                                             >
-                                                <FontAwesomeIcon icon={faEllipsis} className="text-sm" />
+                                                <FontAwesomeIcon icon={faCheck} className="text-sm" />
+                                                {pagamento.status === "Pago" ? "Pago" : "Confirmar"}
                                             </button>
                                         </td>
                                     </tr>

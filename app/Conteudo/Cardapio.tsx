@@ -28,6 +28,7 @@ interface ItemCardapioJson {
     descricao: string;
     preco: number;
     imagem: string;
+    ativo?: boolean;
 }
 
 const categorias: Array<{ id: number | "Todos"; nome: string; icone?: typeof faPizzaSlice }> = [
@@ -47,18 +48,47 @@ const nomeCategorias: Record<number, string> = {
     5: "Adicionais",
 };
 
+function obterNomeCategoria(idCategoria: number, categoriasExtras: string[]) {
+    return nomeCategorias[idCategoria] ?? categoriasExtras[idCategoria - 6] ?? "Outros";
+}
+
 export default function Cardapio() {
     const [itens, setItens] = useState<ItemCardapioJson[]>([]);
     const [categoriaAtiva, setCategoriaAtiva] = useState<number | "Todos">("Todos");
     const [busca, setBusca] = useState("");
-    const [produtoSelecionado, setProdutoSelecionado] = useState<ItemCardapioJson | null>(null);
+    const [produtoSelecionadoId, setProdutoSelecionadoId] = useState<number | null>(null);
+    const [categoriasExtras, setCategoriasExtras] = useState<string[]>([]);
+    const categoriasExibidas: typeof categorias = [
+        ...categorias,
+        ...categoriasExtras.map((nome, index) => ({ id: index + 6, nome })),
+    ];
 
     useEffect(() => {
         async function carregarCardapio() {
             try {
                 const response = await Axios.get<ItemCardapioJson[]>("/json/cardapio.json");
-                setItens(response.data);
-                setProdutoSelecionado(response.data[0] ?? null);
+                const itensSalvos = localStorage.getItem("bella-massa-cardapio");
+                const categoriasSalvas = localStorage.getItem("bella-massa-categorias");
+                let itensCarregados = response.data;
+
+                if (itensSalvos) {
+                    try {
+                        itensCarregados = JSON.parse(itensSalvos) as ItemCardapioJson[];
+                    } catch {
+                        localStorage.removeItem("bella-massa-cardapio");
+                    }
+                }
+
+                if (categoriasSalvas) {
+                    try {
+                        setCategoriasExtras(JSON.parse(categoriasSalvas) as string[]);
+                    } catch {
+                        localStorage.removeItem("bella-massa-categorias");
+                    }
+                }
+
+                setItens(itensCarregados);
+                setProdutoSelecionadoId(itensCarregados[0]?.idItem ?? null);
             } catch (erro) {
                 console.log(erro);
             }
@@ -76,19 +106,48 @@ export default function Cardapio() {
                 !termo ||
                 item.nome.toLowerCase().includes(termo) ||
                 item.descricao.toLowerCase().includes(termo) ||
-                nomeCategorias[item.idCategoria].toLowerCase().includes(termo);
+                obterNomeCategoria(item.idCategoria, categoriasExtras).toLowerCase().includes(termo);
 
             return correspondeCategoria && correspondeBusca;
         });
-    }, [itens, categoriaAtiva, busca]);
+    }, [itens, categoriaAtiva, busca, categoriasExtras]);
 
-    useEffect(() => {
-        if (!produtoSelecionado && itensFiltrados.length > 0) {
-            setProdutoSelecionado(itensFiltrados[0]);
+    const produtoSelecionado = itensFiltrados.find((item) => item.idItem === produtoSelecionadoId) ?? itensFiltrados[0] ?? null;
+
+    function atualizarProduto(idItem: number, alteracoes: Partial<ItemCardapioJson>) {
+        const itensAtualizados = itens.map((item) => item.idItem === idItem ? { ...item, ...alteracoes } : item);
+        setItens(itensAtualizados);
+        localStorage.setItem("bella-massa-cardapio", JSON.stringify(itensAtualizados));
+    }
+
+    function editarPreco() {
+        if (!produtoSelecionado) return;
+        const resposta = window.prompt("Novo preço do produto", produtoSelecionado.preco.toFixed(2).replace(".", ","));
+        if (resposta === null) return;
+
+        const novoPreco = Number(resposta.trim().replace(",", "."));
+        if (!Number.isFinite(novoPreco) || novoPreco <= 0) {
+            window.alert("Digite um preço maior que zero.");
+            return;
         }
-    }, [itensFiltrados, produtoSelecionado]);
 
-    const produtosAtivos = itens.filter((item) => item.preco > 0).length;
+        atualizarProduto(produtoSelecionado.idItem, { preco: novoPreco });
+    }
+
+    function alternarDisponibilidade() {
+        if (produtoSelecionado) atualizarProduto(produtoSelecionado.idItem, { ativo: produtoSelecionado.ativo === false });
+    }
+
+    function adicionarCategoria() {
+        const nome = window.prompt("Nome da nova categoria")?.trim();
+        if (!nome || categoriasExtras.some((categoria) => categoria.toLowerCase() === nome.toLowerCase())) return;
+
+        const categoriasAtualizadas = [...categoriasExtras, nome];
+        setCategoriasExtras(categoriasAtualizadas);
+        localStorage.setItem("bella-massa-categorias", JSON.stringify(categoriasAtualizadas));
+    }
+
+    const produtosAtivos = itens.filter((item) => item.ativo !== false).length;
     const destaques = itens.filter((item) => item.idCategoria === 1).length;
     const totalEstoque = itens.length;
 
@@ -117,7 +176,7 @@ export default function Cardapio() {
                 <div className="mt-4 rounded-[18px] border border-[#e9edf2] bg-white p-3 shadow-[0_8px_25px_rgba(15,23,42,0.05)] sm:p-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-2">
-                            {categorias.map((categoria) => {
+                            {categoriasExibidas.map((categoria) => {
                                 const categoriaAtual: number | "Todos" = categoria.id;
                                 const selecionada = categoriaAtiva === categoriaAtual;
 
@@ -134,7 +193,7 @@ export default function Cardapio() {
                                     >
                                         {categoria.id !== "Todos" && (
                                             <FontAwesomeIcon
-                                                icon={categoria.icone ?? faPizzaSlice}
+                                                icon={("icone" in categoria ? categoria.icone : undefined) ?? faPizzaSlice}
                                                 className="text-base"
                                             />
                                         )}
@@ -164,7 +223,7 @@ export default function Cardapio() {
                         <button
                             type="button"
                             key={produto.idItem}
-                            onClick={() => setProdutoSelecionado(produto)}
+                            onClick={() => setProdutoSelecionadoId(produto.idItem)}
                             className={`overflow-hidden rounded-[18px] border bg-white text-left shadow-[0_8px_22px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)] ${
                                 produtoSelecionado?.idItem === produto.idItem
                                     ? "border-[#d92626] ring-2 ring-[#ffd7d7]"
@@ -194,10 +253,10 @@ export default function Cardapio() {
                                 <div className="flex items-start justify-between gap-2">
                                     <div>
                                         <h2 className="text-lg font-bold text-[#111827]">{produto.nome}</h2>
-                                        <p className="mt-1 text-xs text-slate-500">{nomeCategorias[produto.idCategoria]}</p>
+                                        <p className="mt-1 text-xs text-slate-500">{obterNomeCategoria(produto.idCategoria, categoriasExtras)}</p>
                                     </div>
-                                    <span className="inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">
-                                        Ativo
+                                    <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${produto.ativo === false ? "bg-slate-100 text-slate-600" : "bg-emerald-100 text-emerald-700"}`}>
+                                        {produto.ativo === false ? "Inativo" : "Ativo"}
                                     </span>
                                 </div>
 
@@ -207,7 +266,7 @@ export default function Cardapio() {
                                     <span className="text-lg font-black text-[#101820]">
                                         {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco)}
                                     </span>
-                                    <span className="text-xs font-semibold text-slate-500">Estoque: {produto.idItem}</span>
+                                    <span className="text-xs font-semibold text-slate-500">Código: {produto.idItem}</span>
                                 </div>
                             </div>
                         </button>
@@ -231,7 +290,7 @@ export default function Cardapio() {
                             <p className="text-xl font-black text-[#111827]">Detalhes do item</p>
                         </div>
                     </div>
-                    <button type="button" className="rounded-lg p-2 text-[#475569] transition-colors hover:bg-white/80">
+                    <button type="button" onClick={editarPreco} aria-label="Editar preço do produto" className="rounded-lg p-2 text-[#475569] transition-colors hover:bg-white/80">
                         <FontAwesomeIcon icon={faEdit} className="text-base" />
                     </button>
                 </div>
@@ -244,8 +303,8 @@ export default function Cardapio() {
                                     <p className="text-sm text-slate-500">Produto selecionado</p>
                                     <h3 className="mt-1 text-2xl font-black text-[#101820]">{produtoSelecionado.nome}</h3>
                                 </div>
-                                <span className="inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">
-                                    Ativo
+                                <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${produtoSelecionado.ativo === false ? "bg-slate-100 text-slate-600" : "bg-emerald-100 text-emerald-700"}`}>
+                                    {produtoSelecionado.ativo === false ? "Inativo" : "Ativo"}
                                 </span>
                             </div>
 
@@ -254,7 +313,7 @@ export default function Cardapio() {
                             <div className="mt-4 space-y-2 text-sm text-slate-600">
                                 <div className="flex items-center justify-between">
                                     <span>Categoria</span>
-                                    <span className="font-bold text-slate-800">{nomeCategorias[produtoSelecionado.idCategoria]}</span>
+                                    <span className="font-bold text-slate-800">{obterNomeCategoria(produtoSelecionado.idCategoria, categoriasExtras)}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span>Preço</span>
@@ -263,8 +322,8 @@ export default function Cardapio() {
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span>Estoque</span>
-                                    <span className="font-bold text-slate-800">{produtoSelecionado.idItem} unidades</span>
+                                    <span>Código</span>
+                                    <span className="font-bold text-slate-800">{produtoSelecionado.idItem}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span>Destaque</span>
@@ -281,6 +340,7 @@ export default function Cardapio() {
                         <div className="mt-4 grid grid-cols-2 gap-3">
                             <button
                                 type="button"
+                                onClick={editarPreco}
                                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d92626] px-3 py-3 text-sm font-bold text-white shadow-[0_10px_18px_rgba(217,38,38,0.25)]"
                             >
                                 <FontAwesomeIcon icon={faEdit} className="text-sm" />
@@ -288,10 +348,11 @@ export default function Cardapio() {
                             </button>
                             <button
                                 type="button"
+                                onClick={alternarDisponibilidade}
                                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#dbe2eb] bg-white px-3 py-3 text-sm font-bold text-[#1d2733]"
                             >
                                 <FontAwesomeIcon icon={faPowerOff} className="text-sm" />
-                                Inativar
+                                {produtoSelecionado.ativo === false ? "Ativar" : "Inativar"}
                             </button>
                         </div>
                     </>
@@ -336,6 +397,7 @@ export default function Cardapio() {
 
                 <button
                     type="button"
+                    onClick={adicionarCategoria}
                     className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#dfe6ef] bg-[#e5e7eb] px-3 py-3 text-sm font-bold text-[#6b7280]"
                 >
                     <FontAwesomeIcon icon={faChevronRight} className="text-sm" />

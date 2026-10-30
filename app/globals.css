@@ -55,7 +55,7 @@ body {
   max-width: 32rem;
 }
 
-@media (min-aspect-ratio: 1026/579) {
+@media (min-width: 1026px) and (min-aspect-ratio: 1026/579) {
   .login-cadastro-layout {
     height: 100dvh;
     flex-direction: row;
@@ -77,6 +77,6 @@ body {
 
   .login-cadastro-conteudo > * {
     width: 60%;
-    max-width: none;
+    max-width: 40rem;
   }
 }

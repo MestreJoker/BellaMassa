@@ -7,6 +7,8 @@ import GraficoMovimentoPedidos from "../Components/GraficoMovimentoPedidos";
 import GraficoPedidosPorTipo from "../Components/GraficoPedidosPorTipo";
 import CardReceitaDia from "../Components/CardReceitaDia";
 import TabelaPedidosRecentes from "../Components/TabelaPedidosRecentes";
+import { obterPedidos, type PedidoLocal } from "../lib/pedidos";
+import { obterUsuarioSessao } from "../lib/sessao";
 
 interface ClienteJson {
     idCliente: number
@@ -14,41 +16,28 @@ interface ClienteJson {
     status: string
 }
 
-interface PedidoJson {
-    idPedido: number
-    idCliente: number
-    dataPedido: string
-    total: number
-    status: string
-    formaPagamento?: string
-    tipoEntrega?: string
+interface DashboardProps {
+    onVerTodosPedidos: () => void
 }
 
-interface CardapioJson {
-    idItem: number
-    idCategoria: number
-    nome: string
-    preco: number
-}
-
-export default function Dashboard() {
+export default function Dashboard({ onVerTodosPedidos }: DashboardProps) {
     const [clientes, setClientes] = useState<ClienteJson[]>([])
-    const [pedidos, setPedidos] = useState<PedidoJson[]>([])
-    const [cardapio, setCardapio] = useState<CardapioJson[]>([])
+    const [pedidos, setPedidos] = useState<PedidoLocal[]>([])
     const [carregando, setCarregando] = useState(true)
+    const [nomeUsuario, setNomeUsuario] = useState("")
 
     useEffect(() => {
         async function carregarDados() {
             try {
-                const [clientesResponse, pedidosResponse, cardapioResponse] = await Promise.all([
+                const [clientesResponse, pedidosResponse] = await Promise.all([
                     Axios.get<ClienteJson[]>("/json/clientes.json"),
-                    Axios.get<PedidoJson[]>("/json/pedidos.json"),
-                    Axios.get<CardapioJson[]>("/json/cardapio.json"),
+                    obterPedidos(),
                 ])
 
+                const usuario = obterUsuarioSessao()
                 setClientes(clientesResponse.data)
-                setPedidos(pedidosResponse.data)
-                setCardapio(cardapioResponse.data)
+                setPedidos(pedidosResponse)
+                setNomeUsuario(usuario?.nome.split(" ")[0] ?? "")
             } catch (erro) {
                 console.log(erro)
             } finally {
@@ -61,15 +50,20 @@ export default function Dashboard() {
 
     const dashboardStats = useMemo(() => {
         const clientesAtivos = clientes.filter((cliente) => cliente.status === "Ativo").length
-        const faturamentoTotal = pedidos.reduce((total, pedido) => total + Number(pedido.total || 0), 0)
-        const pedidosHoje = pedidos.length
-        const emPreparo = pedidos.filter((pedido) => /preparo|andamento|processo/i.test(pedido.status)).length
-        const prontos = pedidos.filter((pedido) => /pronto/i.test(pedido.status)).length
-        const emEntrega = pedidos.filter((pedido) => /entrega/i.test(pedido.status)).length
+        const hoje = new Date()
+        const pedidosDeHoje = pedidos.filter((pedido) => {
+            const data = new Date(pedido.dataPedido)
+            return data.getFullYear() === hoje.getFullYear() && data.getMonth() === hoje.getMonth() && data.getDate() === hoje.getDate()
+        })
+        const pedidosHoje = pedidosDeHoje.length
+        const faturamentoHoje = pedidosDeHoje.reduce((total, pedido) => total + Number(pedido.total || 0), 0)
+        const emPreparo = pedidosDeHoje.filter((pedido) => /preparo|andamento|processo/i.test(pedido.status)).length
+        const prontos = pedidosDeHoje.filter((pedido) => /pronto/i.test(pedido.status)).length
+        const emEntrega = pedidosDeHoje.filter((pedido) => /entrega/i.test(pedido.status)).length
 
         return {
             clientesAtivos,
-            faturamentoTotal,
+            faturamentoHoje,
             pedidosHoje,
             emPreparo,
             prontos,
@@ -77,7 +71,13 @@ export default function Dashboard() {
         }
     }, [clientes, pedidos])
 
-    const receitaComparativa = pedidos.length > 0 ? 12 : 0
+    const pedidosPorTipo = useMemo(() => ({
+        entregas: pedidos.filter((pedido) => pedido.tipoEntrega === "Entrega").length,
+        retiradas: pedidos.filter((pedido) => pedido.tipoEntrega === "Retirada").length,
+        balcao: pedidos.filter((pedido) => pedido.tipoEntrega === "Balcão").length,
+    }), [pedidos])
+
+    const receitaComparativa = 0
 
     return (
         <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
@@ -93,7 +93,9 @@ export default function Dashboard() {
                 />
 
                 <div className="relative z-10 flex h-full max-w-xl flex-col justify-center px-4 text-white sm:px-8">
-                    <h1 className="mb-2 text-2xl font-bold sm:text-3xl">Bem-vindo, Gabriel!</h1>
+                    <h1 className="mb-2 text-2xl font-bold sm:text-3xl">
+                        Bem-vindo{nomeUsuario ? `, ${nomeUsuario}` : " à Bella Massa"}!
+                    </h1>
                     <p className="w-full text-xs text-gray-300 sm:w-3/5 sm:text-sm">
                         Aqui você acompanha o movimento da pizzaria e gerencia os pedidos do dia.
                     </p>
@@ -111,13 +113,13 @@ export default function Dashboard() {
                     <GraficoMovimentoPedidos />
                 </div>
                 <div className="flex flex-col gap-5">
-                    <GraficoPedidosPorTipo />
-                    <CardReceitaDia valor={dashboardStats.faturamentoTotal} percentual={receitaComparativa} />
+                    <GraficoPedidosPorTipo {...pedidosPorTipo} />
+                    <CardReceitaDia valor={dashboardStats.faturamentoHoje} percentual={receitaComparativa} />
                 </div>
             </div>
 
             <div className="w-full">
-                <TabelaPedidosRecentes pedidos={pedidos} clientes={clientes} />
+                <TabelaPedidosRecentes pedidos={pedidos} clientes={clientes} onVerTodos={onVerTodosPedidos} />
             </div>
 
             {!carregando && pedidos.length === 0 && (

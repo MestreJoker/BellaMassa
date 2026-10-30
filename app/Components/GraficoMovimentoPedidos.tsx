@@ -3,23 +3,16 @@
 import { useEffect, useMemo, useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faChartLine } from "@fortawesome/free-solid-svg-icons"
-import Axios from "axios"
-
-interface PedidoJson {
-    idPedido: number
-    dataPedido: string
-    total: number
-}
+import { obterPedidos, type PedidoLocal } from "../lib/pedidos"
 
 export default function GraficoMovimentoPedidos() {
     const [periodo, setPeriodo] = useState("Pedidos")
-    const [pedidos, setPedidos] = useState<PedidoJson[]>([])
+    const [pedidos, setPedidos] = useState<PedidoLocal[]>([])
 
     useEffect(() => {
         async function carregarDados() {
             try {
-                const response = await Axios.get<PedidoJson[]>("/json/pedidos.json")
-                setPedidos(response.data)
+                setPedidos(await obterPedidos())
             } catch (erro) {
                 console.log(erro)
             }
