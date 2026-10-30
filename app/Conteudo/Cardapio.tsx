@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -19,6 +19,7 @@ import {
     faStar,
     faStore,
     faTruck,
+    faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 
 interface ItemCardapioJson {
@@ -29,6 +30,7 @@ interface ItemCardapioJson {
     preco: number;
     imagem: string;
     ativo?: boolean;
+    destaque?: boolean;
 }
 
 const categorias: Array<{ id: number | "Todos"; nome: string; icone?: typeof faPizzaSlice }> = [
@@ -58,6 +60,11 @@ export default function Cardapio() {
     const [busca, setBusca] = useState("");
     const [produtoSelecionadoId, setProdutoSelecionadoId] = useState<number | null>(null);
     const [categoriasExtras, setCategoriasExtras] = useState<string[]>([]);
+    const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
+    const [precoEditado, setPrecoEditado] = useState("");
+    const [descricaoEditada, setDescricaoEditada] = useState("");
+    const [destaqueEditado, setDestaqueEditado] = useState(false);
+    const [erroEdicao, setErroEdicao] = useState("");
     const categoriasExibidas: typeof categorias = [
         ...categorias,
         ...categoriasExtras.map((nome, index) => ({ id: index + 6, nome })),
@@ -120,18 +127,31 @@ export default function Cardapio() {
         localStorage.setItem("bella-massa-cardapio", JSON.stringify(itensAtualizados));
     }
 
-    function editarPreco() {
+    function abrirModalEdicao() {
         if (!produtoSelecionado) return;
-        const resposta = window.prompt("Novo preço do produto", produtoSelecionado.preco.toFixed(2).replace(".", ","));
-        if (resposta === null) return;
+        setPrecoEditado(produtoSelecionado.preco.toFixed(2).replace(".", ","));
+        setDescricaoEditada(produtoSelecionado.descricao);
+        setDestaqueEditado(produtoSelecionado.destaque ?? produtoSelecionado.idCategoria === 1);
+        setErroEdicao("");
+        setModalEdicaoAberto(true);
+    }
 
-        const novoPreco = Number(resposta.trim().replace(",", "."));
+    function salvarEdicao(evento: FormEvent<HTMLFormElement>) {
+        evento.preventDefault();
+        if (!produtoSelecionado) return;
+
+        const novoPreco = Number(precoEditado.trim().replace(",", "."));
         if (!Number.isFinite(novoPreco) || novoPreco <= 0) {
-            window.alert("Digite um preço maior que zero.");
+            setErroEdicao("Informe um preço maior que zero.");
             return;
         }
 
-        atualizarProduto(produtoSelecionado.idItem, { preco: novoPreco });
+        atualizarProduto(produtoSelecionado.idItem, {
+            preco: novoPreco,
+            descricao: descricaoEditada.trim(),
+            destaque: destaqueEditado,
+        });
+        setModalEdicaoAberto(false);
     }
 
     function alternarDisponibilidade() {
@@ -148,7 +168,7 @@ export default function Cardapio() {
     }
 
     const produtosAtivos = itens.filter((item) => item.ativo !== false).length;
-    const destaques = itens.filter((item) => item.idCategoria === 1).length;
+    const destaques = itens.filter((item) => item.destaque ?? item.idCategoria === 1).length;
     const totalEstoque = itens.length;
 
     return (
@@ -241,7 +261,7 @@ export default function Cardapio() {
                                     backgroundSize: "cover",
                                 }}
                             >
-                                {produto.idCategoria === 1 && (
+                                {(produto.destaque ?? produto.idCategoria === 1) && (
                                     <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#fff7d6] px-2 py-1 text-[10px] font-bold text-[#8a5a00]">
                                         <FontAwesomeIcon icon={faStar} className="text-[10px]" />
                                         Destaque
@@ -290,7 +310,7 @@ export default function Cardapio() {
                             <p className="text-xl font-black text-[#111827]">Detalhes do item</p>
                         </div>
                     </div>
-                    <button type="button" onClick={editarPreco} aria-label="Editar preço do produto" className="rounded-lg p-2 text-[#475569] transition-colors hover:bg-white/80">
+                    <button type="button" onClick={abrirModalEdicao} aria-label="Editar produto" className="rounded-lg p-2 text-[#475569] transition-colors hover:bg-white/80">
                         <FontAwesomeIcon icon={faEdit} className="text-base" />
                     </button>
                 </div>
@@ -327,7 +347,7 @@ export default function Cardapio() {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span>Destaque</span>
-                                    <span className="font-bold text-slate-800">{produtoSelecionado.idCategoria === 1 ? "Sim" : "Não"}</span>
+                                    <span className="font-bold text-slate-800">{produtoSelecionado.destaque ?? produtoSelecionado.idCategoria === 1 ? "Sim" : "Não"}</span>
                                 </div>
                             </div>
                         </div>
@@ -340,7 +360,7 @@ export default function Cardapio() {
                         <div className="mt-4 grid grid-cols-2 gap-3">
                             <button
                                 type="button"
-                                onClick={editarPreco}
+                                onClick={abrirModalEdicao}
                                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d92626] px-3 py-3 text-sm font-bold text-white shadow-[0_10px_18px_rgba(217,38,38,0.25)]"
                             >
                                 <FontAwesomeIcon icon={faEdit} className="text-sm" />
@@ -404,6 +424,96 @@ export default function Cardapio() {
                     Nova categoria
                 </button>
             </aside>
+
+            {modalEdicaoAberto && produtoSelecionado && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+                    onMouseDown={(evento) => {
+                        if (evento.target === evento.currentTarget) setModalEdicaoAberto(false);
+                    }}
+                >
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="titulo-modal-editar-produto"
+                        className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6"
+                    >
+                        <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div>
+                                <h2 id="titulo-modal-editar-produto" className="text-xl font-bold text-slate-900">Editar produto</h2>
+                                <p className="mt-1 text-sm text-slate-500">{produtoSelecionado.nome}</p>
+                            </div>
+                            <button
+                                type="button"
+                                aria-label="Fechar edição"
+                                onClick={() => setModalEdicaoAberto(false)}
+                                className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100"
+                            >
+                                <FontAwesomeIcon icon={faXmark} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={salvarEdicao} className="flex flex-col gap-4">
+                            <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
+                                Preço
+                                <div className="flex items-center rounded-lg border border-slate-200 px-3 focus-within:border-slate-400">
+                                    <span className="text-sm text-slate-400">R$</span>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={precoEditado}
+                                        onChange={(evento) => setPrecoEditado(evento.target.value)}
+                                        className="min-w-0 flex-1 bg-transparent px-2 py-2.5 font-normal text-slate-900 outline-none"
+                                        required
+                                    />
+                                </div>
+                            </label>
+
+                            <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
+                                Descrição
+                                <textarea
+                                    value={descricaoEditada}
+                                    onChange={(evento) => setDescricaoEditada(evento.target.value)}
+                                    rows={4}
+                                    className="w-full resize-y rounded-lg border border-slate-200 px-3 py-2.5 font-normal text-slate-900 outline-none focus:border-slate-400"
+                                    required
+                                />
+                            </label>
+
+                            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm text-slate-700">
+                                <input
+                                    type="checkbox"
+                                    checked={destaqueEditado}
+                                    onChange={(evento) => setDestaqueEditado(evento.target.checked)}
+                                    className="size-4 accent-amber-500"
+                                />
+                                <span>
+                                    <span className="block font-semibold">Produto em destaque</span>
+                                    <span className="mt-0.5 block text-xs text-slate-500">Exibir o selo de destaque no catálogo.</span>
+                                </span>
+                            </label>
+
+                            {erroEdicao && <p role="alert" className="text-sm font-medium text-red-700">{erroEdicao}</p>}
+
+                            <div className="mt-2 flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setModalEdicaoAberto(false)}
+                                    className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="rounded-lg bg-[#d92626] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#b81f26]"
+                                >
+                                    Salvar alterações
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }
