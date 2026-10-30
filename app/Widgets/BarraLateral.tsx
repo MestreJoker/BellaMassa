@@ -78,7 +78,7 @@ export default function BarraLateral(props: BarraLateralProps){
                 />
             )}
             <aside className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] overflow-y-auto bg-[#0b0f16] p-5 shadow-2xl transition-transform duration-200 md:static md:h-dvh md:w-64 md:max-w-none md:shrink-0 md:translate-x-0 md:overflow-y-auto md:shadow-none ${props.menuMobileAberto ? "translate-x-0" : "-translate-x-full"}`}>
-            <Image alt="Bella Massa" src={'/images/logoBellaMassaBranca.png'} width={220} height={220} className="h-auto w-full max-w-55"/>
+            <Image alt="Bella Massa" src={'/images/logoBellaMassa.jpg'} width={220} height={220} className="h-auto w-full max-w-55"/>
             <nav id="conteudoLinks" aria-label="Navegação principal" className="mt-5 flex flex-col gap-3">
                 {itens.map((item, index) => {
                     return(

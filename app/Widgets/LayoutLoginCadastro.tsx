@@ -6,12 +6,11 @@ export default function LayoutLoginCadastro(
     props: LayoutLoginCadastroProps
 ){
     return(
-        <div className="h-screen w-screen flex">
-            <div className="w-[45%] h-full
-            bg-[url('/images/backgroundLoginCadastro.png')] bg-no-repeat bg-cover bg-right">
+        <div className="login-cadastro-layout">
+            <div className="login-cadastro-imagem bg-[url('/images/backgroundLoginCadastro.png')] bg-no-repeat bg-cover bg-right">
             </div>
 
-            <div className="flex-1 p-10 flex items-center">
+            <div className="login-cadastro-conteudo">
                 {props.children}
             </div>
         </div>
