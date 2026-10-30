@@ -11,7 +11,7 @@ export default function LayoutLoginCadastro(
             bg-[url('/images/backgroundLoginCadastro.png')] bg-no-repeat bg-cover bg-right">
             </div>
 
-            <div className="flex-1 p-10">
+            <div className="flex-1 p-10 flex items-center">
                 {props.children}
             </div>
         </div>

@@ -1,0 +1,38 @@
+[
+    {
+        "id": 1,
+        "nome": "Gabriel dos Santos Gomes",
+        "email": "gabriel@gmail.com",
+        "senha": "abc123"
+    },
+    {
+        "id": 2,
+        "nome": "Marcos Vinícius de Oliveira Corrêa",
+        "email": "marcos@gmail.com",
+        "senha": "abc123"
+    },
+    {
+        "id": 3,
+        "nome": "Matheus",
+        "email": "matheus@gmail.com",
+        "senha": "abc123"
+    },
+    {
+        "id": 4,
+        "nome": "Aline",
+        "email": "aline@gmail.com",
+        "senha": "abc123"
+    },
+    {
+        "id": 5,
+        "nome": "Weslley",
+        "email": "weslley@gmail.com",
+        "senha": "abc123"
+    },
+    {
+        "id": 6,
+        "nome": "Sthephany",
+        "email": "stephany@gmail.com",
+        "senha": "abc123"
+    }
+]
