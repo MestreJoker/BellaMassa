@@ -18,10 +18,8 @@ export default function GraficoPedidosPorTipo({ entregas, retiradas, balcao }: G
             <h3 className="text-base font-bold text-slate-800 mb-4">Pedidos por tipo</h3>
 
             <div className="my-2 flex min-w-0 flex-wrap items-center justify-center gap-4">
-                {/* Gráfico circular simulado (Donut Chart) */}
                 <div className="relative flex items-center justify-center">
                     <div className="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-10 border-slate-100 sm:size-28">
-                        {/* Simulação visual dos percentuais com conic-gradient */}
                         <div 
                             className="absolute inset-0 rounded-full"
                             style={{

@@ -14,6 +14,7 @@ export default function Login(){
     const [email, setEmail] = useState("")
     const [senha, setSenha] = useState("")
     const [erro, setErro] = useState("")
+    const [mensagemRecuperacao, setMensagemRecuperacao] = useState("")
     const [carregando, setCarregando] = useState(false)
 
     useEffect(() => {
@@ -52,6 +53,28 @@ export default function Login(){
         } catch (erro) {
             console.error("Não foi possível autenticar no Supabase.", erro)
             setErro("Não foi possível conectar ao sistema. Tente novamente.")
+        } finally {
+            setCarregando(false)
+        }
+    }
+
+    async function recuperarSenha() {
+        setErro("")
+        setMensagemRecuperacao("")
+        if (!email.trim()) {
+            setErro("Informe seu e-mail para receber o link de recuperação.")
+            return
+        }
+
+        setCarregando(true)
+        try {
+            const redirectTo = new URL("/auth/callback?next=/redefinir-senha", window.location.origin).toString()
+            const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+            if (error) throw error
+            setMensagemRecuperacao("Se o e-mail estiver cadastrado, você receberá instruções para redefinir a senha.")
+        } catch (erroRecuperacao) {
+            console.error("Não foi possível solicitar a recuperação da senha.", erroRecuperacao)
+            setErro("Não foi possível enviar o link de recuperação. Tente novamente.")
         } finally {
             setCarregando(false)
         }
@@ -96,7 +119,15 @@ export default function Login(){
                         />
                     </div>
 
-                    <p className="mt-1 text-sm text-(--colorMain)">Esqueceu sua senha?</p>
+                    <button
+                        type="button"
+                        onClick={() => { void recuperarSenha() }}
+                        disabled={carregando}
+                        className="mt-2 text-sm font-semibold text-(--colorMain) hover:underline disabled:opacity-60"
+                    >
+                        Esqueceu sua senha?
+                    </button>
+                    {mensagemRecuperacao && <p role="status" className="mt-2 text-sm text-emerald-700">{mensagemRecuperacao}</p>}
                     {erro && (
                         <div role="alert" aria-live="assertive" className="mt-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-red-900 shadow-sm sm:px-4">
                             <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700">

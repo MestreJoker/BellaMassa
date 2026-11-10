@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faArrowTrendDown,
   faArrowTrendUp,
   faClipboardList,
   faFileExport,
@@ -29,6 +30,7 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
   const [clientes, setClientes] = useState<ClienteLocal[]>([]);
   const [cardapio, setCardapio] = useState<ProdutoLocal[]>([]);
   const [periodoFiltro, setPeriodoFiltro] = useState("todos");
+  const [erroCarga, setErroCarga] = useState("");
 
   useEffect(() => {
     async function carregarDados() {
@@ -44,6 +46,7 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
         setCardapio(cardapioResponse);
       } catch (erro) {
         console.error("Não foi possível carregar os relatórios.", erro);
+        setErroCarga("Não foi possível carregar os relatórios. Atualize a página e tente novamente.");
       }
     }
 
@@ -55,39 +58,68 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
 
     const hoje = new Date();
     const dias = Number(periodoFiltro.replace("d", ""));
+    const inicio = hoje.getTime() - dias * 24 * 60 * 60 * 1000;
 
     return pedidos.filter((pedido) => {
-      const dataPedido = new Date(pedido.dataPedido);
-      const diff = (hoje.getTime() - dataPedido.getTime()) / (1000 * 60 * 60 * 24);
-      return diff >= 0 && diff <= dias;
+      const instante = new Date(pedido.dataPedido).getTime();
+      return instante >= inicio && instante <= hoje.getTime();
+    });
+  }, [pedidos, periodoFiltro]);
+
+  const pedidosPagos = useMemo(
+    () => pedidosFiltradosPorPeriodo.filter((pedido) => pedido.statusPagamento === "Pago"),
+    [pedidosFiltradosPorPeriodo],
+  );
+  const pedidosAnteriores = useMemo(() => {
+    if (periodoFiltro === "todos") return [];
+    const agora = new Date().getTime();
+    const dias = Number(periodoFiltro.replace("d", ""));
+    const inicioAtual = agora - dias * 24 * 60 * 60 * 1000;
+    const inicioAnterior = inicioAtual - dias * 24 * 60 * 60 * 1000;
+    return pedidos.filter((pedido) => {
+      const instante = new Date(pedido.dataPedido).getTime();
+      return instante >= inicioAnterior && instante < inicioAtual;
     });
   }, [pedidos, periodoFiltro]);
 
   const financeiro = useMemo(() => {
-    const total = pedidosFiltradosPorPeriodo.reduce((sum, pedido) => sum + Number(pedido.total || 0), 0);
-    const pedidosPagos = pedidosFiltradosPorPeriodo.filter((pedido) => /pago|pronto|andamento|entrega/i.test(pedido.status)).length;
-    const ticketMedio = pedidosFiltradosPorPeriodo.length ? total / pedidosFiltradosPorPeriodo.length : 0;
-    const produtosVendidos = pedidosFiltradosPorPeriodo.reduce((sum, pedido) => {
-      const itensQuantidade = Array.isArray(pedido.itens)
-        ? pedido.itens.reduce((acc, item) => acc + Number(item.quantidade || 0), 0)
-        : 0;
-      return sum + itensQuantidade;
-    }, 0);
+    const total = pedidosPagos.reduce((sum, pedido) => sum + pedido.total, 0);
+    const ticketMedio = pedidosPagos.length ? total / pedidosPagos.length : 0;
+    const produtosVendidos = pedidosPagos.reduce(
+      (sum, pedido) => sum + pedido.itens.reduce((acc, item) => acc + Number(item.quantidade ?? 0), 0),
+      0,
+    );
 
+    return { total, ticketMedio, produtosVendidos };
+  }, [pedidosPagos]);
+
+  const financeiroAnterior = useMemo(() => {
+    const pagos = pedidosAnteriores.filter((pedido) => pedido.statusPagamento === "Pago");
+    const total = pagos.reduce((sum, pedido) => sum + pedido.total, 0);
     return {
       total,
-      pedidosPagos,
-      ticketMedio,
-      produtosVendidos,
+      quantidade: pedidosAnteriores.length,
+      ticketMedio: pagos.length ? total / pagos.length : 0,
+      produtosVendidos: pagos.reduce(
+        (sum, pedido) => sum + pedido.itens.reduce((acc, item) => acc + Number(item.quantidade ?? 0), 0),
+        0,
+      ),
     };
-  }, [pedidosFiltradosPorPeriodo]);
+  }, [pedidosAnteriores]);
+
+  function variacao(atual: number, anterior: number): string {
+    if (periodoFiltro === "todos") return "—";
+    if (anterior === 0) return atual === 0 ? "0%" : "Novo";
+    const percentual = Math.round(((atual - anterior) / anterior) * 100);
+    return `${percentual > 0 ? "+" : ""}${percentual}%`;
+  }
 
   const cardsResumo = [
     {
-      titulo: "Faturamento total",
+      titulo: "Faturamento recebido",
       valor: formatCurrency(financeiro.total),
-      percentual: "+18%",
-      detalhe: "em relação ao período anterior",
+      percentual: variacao(financeiro.total, financeiroAnterior.total),
+      detalhe: periodoFiltro === "todos" ? "somente pedidos pagos" : "comparado ao período anterior",
       icone: faWallet,
       cor: "bg-emerald-100 text-emerald-700",
       valorCor: "text-emerald-700",
@@ -95,8 +127,8 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
     {
       titulo: "Total de pedidos",
       valor: String(pedidosFiltradosPorPeriodo.length),
-      percentual: "+12%",
-      detalhe: "em relação ao período anterior",
+      percentual: variacao(pedidosFiltradosPorPeriodo.length, financeiroAnterior.quantidade),
+      detalhe: periodoFiltro === "todos" ? "no período selecionado" : "comparado ao período anterior",
       icone: faClipboardList,
       cor: "bg-blue-100 text-blue-700",
       valorCor: "text-blue-700",
@@ -104,8 +136,8 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
     {
       titulo: "Ticket médio",
       valor: formatCurrency(financeiro.ticketMedio),
-      percentual: "+5%",
-      detalhe: "em relação ao período anterior",
+      percentual: variacao(financeiro.ticketMedio, financeiroAnterior.ticketMedio),
+      detalhe: periodoFiltro === "todos" ? "média dos pedidos pagos" : "comparado ao período anterior",
       icone: faReceipt,
       cor: "bg-violet-100 text-violet-700",
       valorCor: "text-violet-700",
@@ -113,8 +145,8 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
     {
       titulo: "Produtos vendidos",
       valor: String(financeiro.produtosVendidos),
-      percentual: "+14%",
-      detalhe: "em relação ao período anterior",
+      percentual: variacao(financeiro.produtosVendidos, financeiroAnterior.produtosVendidos),
+      detalhe: periodoFiltro === "todos" ? "em pedidos pagos" : "comparado ao período anterior",
       icone: faPizzaSlice,
       cor: "bg-amber-100 text-amber-700",
       valorCor: "text-amber-700",
@@ -122,30 +154,94 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
   ];
 
   const vendasPorCategoria = useMemo(() => {
-    const total = cardapio.reduce((sum, item) => sum + Number(item.preco || 0), 0);
-    const categorias = [
-      { nome: "Pizzas", valor: 0, cor: "bg-blue-500" },
-      { nome: "Bebidas", valor: 0, cor: "bg-emerald-500" },
-      { nome: "Sobremesas", valor: 0, cor: "bg-violet-500" },
-      { nome: "Bordas", valor: 0, cor: "bg-amber-500" },
-      { nome: "Adicionais", valor: 0, cor: "bg-pink-500" },
-    ];
-
-    cardapio.forEach((item) => {
-      const indice = categorias.findIndex((categoria) => categoria.nome === item.categoria);
-
-      if (indice >= 0) {
-        categorias[indice].valor += Number(item.preco || 0);
+    const cores = ["bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-amber-500", "bg-pink-500", "bg-cyan-500"];
+    const totais = new Map<string, number>();
+    for (const pedido of pedidosPagos) {
+      for (const item of pedido.itens) {
+        const produto = cardapio.find((catalogo) => catalogo.idItem === item.idProduto);
+        const categoria = produto?.categoria ?? "Categoria indisponível";
+        const totalItem = item.precoTotalItem ?? Number(item.precoUnitario ?? 0) * Number(item.quantidade ?? 0);
+        totais.set(categoria, (totais.get(categoria) ?? 0) + totalItem);
       }
-    });
+    }
+    const total = [...totais.values()].reduce((sum, valor) => sum + valor, 0);
+    return [...totais.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([nome, valor], index) => ({
+        nome,
+        valor: formatCurrency(valor),
+        porcentagem: total ? `${Math.round((valor / total) * 100)}%` : "0%",
+        cor: cores[index % cores.length],
+      }));
+  }, [cardapio, pedidosPagos]);
 
-    return categorias.map((categoria) => ({
-      nome: categoria.nome,
-      valor: formatCurrency(categoria.valor),
-      porcentagem: total > 0 ? `${Math.round((categoria.valor / total) * 100)}%` : "0%",
-      cor: categoria.cor,
+  const produtosMaisVendidos = useMemo(() => {
+    const totais = new Map<string, { nome: string; quantidade: number; total: number }>();
+    for (const pedido of pedidosPagos) {
+      for (const item of pedido.itens) {
+        const produto = cardapio.find((catalogo) => catalogo.idItem === item.idProduto);
+        const nome = item.nome ?? produto?.nome ?? "Produto removido";
+        const registro = totais.get(nome) ?? { nome, quantidade: 0, total: 0 };
+        registro.quantidade += Number(item.quantidade ?? 0);
+        registro.total += item.precoTotalItem ?? Number(item.precoUnitario ?? 0) * Number(item.quantidade ?? 0);
+        totais.set(nome, registro);
+      }
+    }
+    return [...totais.values()].sort((a, b) => b.quantidade - a.quantidade).slice(0, 5);
+  }, [cardapio, pedidosPagos]);
+
+  const pagamentosPorForma = useMemo(() => {
+    const formas = ["Pix", "Cartão de crédito", "Cartão de débito", "Dinheiro", "Outro"];
+    const cores = ["#3b82f6", "#a855f7", "#8b5cf6", "#34d399", "#f59e0b"];
+    return formas.map((nome, index) => {
+      const pedidosDaForma = pedidosPagos.filter((pedido) => pedido.formaPagamento === nome);
+      return {
+        nome,
+        quantidade: pedidosDaForma.length,
+        total: pedidosDaForma.reduce((sum, pedido) => sum + pedido.total, 0),
+        cor: cores[index],
+      };
+    }).filter((forma) => forma.quantidade > 0);
+  }, [pedidosPagos]);
+
+  const gradientePagamentos = useMemo(() => {
+    if (!financeiro.total) return "conic-gradient(#e2e8f0 0 100%)";
+    let inicio = 0;
+    const fatias = pagamentosPorForma.map((forma) => {
+      const fim = inicio + (forma.total / financeiro.total) * 100;
+      const fatia = `${forma.cor} ${inicio}% ${fim}%`;
+      inicio = fim;
+      return fatia;
+    });
+    return `conic-gradient(${fatias.join(", ")})`;
+  }, [financeiro.total, pagamentosPorForma]);
+
+  const faturamentoDiario = useMemo(() => {
+    const hoje = new Date();
+    return Array.from({ length: 7 }, (_, index) => {
+      const data = new Date(hoje);
+      data.setDate(hoje.getDate() - (6 - index));
+      const inicioDia = new Date(data.getFullYear(), data.getMonth(), data.getDate()).getTime();
+      const fimDia = inicioDia + 24 * 60 * 60 * 1000;
+      const valor = pedidosPagos
+        .filter((pedido) => {
+          const instante = new Date(pedido.dataPedido).getTime();
+          return instante >= inicioDia && instante < fimDia;
+        })
+        .reduce((sum, pedido) => sum + pedido.total, 0);
+      return { data, valor };
+    });
+  }, [pedidosPagos]);
+
+  const pontosFaturamento = useMemo(() => {
+    const maximo = Math.max(...faturamentoDiario.map((item) => item.valor), 1);
+    return faturamentoDiario.map((item, index) => ({
+      x: (index / (faturamentoDiario.length - 1)) * 500,
+      y: 190 - (item.valor / maximo) * 150,
     }));
-  }, [cardapio]);
+  }, [faturamentoDiario]);
+  const caminhoFaturamento = pontosFaturamento.map((ponto) => `${ponto.x},${ponto.y}`).join(" ");
+  const areaFaturamento = `0,210 ${caminhoFaturamento} 500,210`;
 
   const ultimosPedidos = useMemo(() => {
     return pedidosFiltradosPorPeriodo.slice(0, 5).map((pedido) => {
@@ -154,8 +250,8 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
         id: `#${pedido.idPedido}`,
         cliente,
         valor: formatCurrency(pedido.total),
-        status: /andamento|preparo/i.test(pedido.status) ? "Em preparo" : /entrega/i.test(pedido.status) ? "Entrega" : /pronto/i.test(pedido.status) ? "Pago" : "Recebido",
-        statusColor: /andamento|preparo/i.test(pedido.status) ? "bg-amber-100 text-amber-700" : /entrega/i.test(pedido.status) ? "bg-emerald-100 text-emerald-700" : "bg-violet-100 text-violet-700",
+        status: pedido.statusPagamento,
+        statusColor: pedido.statusPagamento === "Pago" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
         data: new Date(pedido.dataPedido).toLocaleDateString("pt-BR"),
         hora: new Date(pedido.dataPedido).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }),
       };
@@ -163,22 +259,47 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
   }, [clientes, pedidosFiltradosPorPeriodo]);
 
   const pedidosPorStatus = useMemo(() => {
-    const total = pedidosFiltradosPorPeriodo.length || 1;
-    const entregues = pedidosFiltradosPorPeriodo.filter((pedido) => /entrega|pago/i.test(pedido.status)).length;
-    const emPreparo = pedidosFiltradosPorPeriodo.filter((pedido) => /preparo|andamento/i.test(pedido.status)).length;
-    const prontos = pedidosFiltradosPorPeriodo.filter((pedido) => /pronto/i.test(pedido.status)).length;
-    const emEntrega = pedidosFiltradosPorPeriodo.filter((pedido) => /entrega/i.test(pedido.status)).length;
-
-    return [
-      { nome: "Entregue", valor: entregues, percentual: `${Math.round((entregues / total) * 100)}%`, cor: "bg-pink-500" },
-      { nome: "Em preparo", valor: emPreparo, percentual: `${Math.round((emPreparo / total) * 100)}%`, cor: "bg-cyan-500" },
-      { nome: "Pronto", valor: prontos, percentual: `${Math.round((prontos / total) * 100)}%`, cor: "bg-green-500" },
-      { nome: "Em entrega", valor: emEntrega, percentual: `${Math.round((emEntrega / total) * 100)}%`, cor: "bg-amber-500" },
-    ];
+    const status = ["Em andamento", "Em preparo", "Pronto", "Em entrega", "Entregue", "Retirado", "Cancelado"];
+    const cores = ["bg-slate-400", "bg-cyan-500", "bg-green-500", "bg-amber-500", "bg-emerald-500", "bg-blue-500", "bg-rose-500"];
+    const total = pedidosFiltradosPorPeriodo.length;
+    return status.map((nome, index) => {
+      const valor = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.status === nome).length;
+      return {
+        nome,
+        valor,
+        percentual: total ? `${Math.round((valor / total) * 100)}%` : "0%",
+        cor: cores[index],
+      };
+    });
   }, [pedidosFiltradosPorPeriodo]);
+
+  const statusEntrega = pedidosFiltradosPorPeriodo.filter((pedido) => ["Entregue", "Retirado"].includes(pedido.status)).length;
+  const statusCancelados = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.status === "Cancelado").length;
+  const pedidosAbertos = pedidosFiltradosPorPeriodo.filter((pedido) => !["Entregue", "Retirado", "Cancelado"].includes(pedido.status)).length;
+  const pedidosNaoPagos = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.statusPagamento !== "Pago" && pedido.status !== "Cancelado");
+  const valorNaoRecebido = pedidosNaoPagos.reduce((sum, pedido) => sum + pedido.total, 0);
+  const pedidosEntrega = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.tipoEntrega === "Entrega");
+  const taxaMediaEntrega = pedidosEntrega.length
+    ? pedidosEntrega.reduce((sum, pedido) => sum + pedido.taxaEntrega, 0) / pedidosEntrega.length
+    : 0;
+
+  const gradienteStatus = useMemo(() => {
+    const total = pedidosPorStatus.reduce((sum, status) => sum + status.valor, 0);
+    if (!total) return "conic-gradient(#e2e8f0 0 100%)";
+    const cores = ["#94a3b8", "#06b6d4", "#22c55e", "#f59e0b", "#10b981", "#3b82f6", "#f43f5e"];
+    let inicio = 0;
+    const fatias = pedidosPorStatus.map((status, index) => {
+      const fim = inicio + (status.valor / total) * 100;
+      const fatia = `${cores[index]} ${inicio}% ${fim}%`;
+      inicio = fim;
+      return fatia;
+    });
+    return `conic-gradient(${fatias.join(", ")})`;
+  }, [pedidosPorStatus]);
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
+      {erroCarga && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erroCarga}</p>}
       <header className="flex flex-col gap-3 rounded-[18px] border border-[#e7ecf3] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)] xl:flex-row xl:items-center xl:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f2f5fb] text-[#1a2231]">
@@ -234,8 +355,10 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
               <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${card.cor}`}>
                 <FontAwesomeIcon icon={card.icone} className="text-lg" />
               </div>
-              <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600">
-                <FontAwesomeIcon icon={faArrowTrendUp} className="text-[10px]" />
+              <div className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold ${
+                card.percentual.startsWith("-") ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"
+              }`}>
+                <FontAwesomeIcon icon={card.percentual.startsWith("-") ? faArrowTrendDown : faArrowTrendUp} className="text-[10px]" />
                 <span>{card.percentual}</span>
               </div>
             </div>
@@ -255,7 +378,10 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eef4ff] text-[#2c66d8]">
               <FontAwesomeIcon icon={faArrowTrendUp} className="text-lg" />
             </div>
-            <h2 className="text-2xl font-black text-[#101820]">Evolução do faturamento</h2>
+            <div>
+              <h2 className="text-2xl font-black text-[#101820]">Evolução do faturamento recebido</h2>
+              <p className="text-xs text-slate-500">Últimos 7 dias</p>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-lg border border-[#edf1f6] bg-[#f9fbff] p-3">
@@ -271,22 +397,18 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
                 <line key={linha} x1="0" y1={30 + linha * 40} x2="500" y2={30 + linha * 40} stroke="#dfe7f3" strokeDasharray="4 8" />
               ))}
 
-              <path d="M0,160 L70,120 L145,95 L210,88 L290,74 L360,98 L430,64 L500,50 L500,210 L0,210 Z" fill="url(#linhasRelatorio)" />
-              <path d="M0,160 L70,120 L145,95 L210,88 L290,74 L360,98 L430,64 L500,50" fill="none" stroke="#3f6fe5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              <polygon points={areaFaturamento} fill="url(#linhasRelatorio)" />
+              <polyline points={caminhoFaturamento} fill="none" stroke="#3f6fe5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
-              {[ [0, 160],[70, 120],[145, 95],[210, 88],[290, 74],[360, 98],[430, 64],[500, 50] ].map(([x, y], index) => (
+              {pontosFaturamento.map(({ x, y }, index) => (
                 <circle key={index} cx={x} cy={y} r="4" fill="#3f6fe5" />
               ))}
             </svg>
 
             <div className="mt-2 flex justify-between px-2 text-xs font-medium text-slate-500">
-              <span>15/09</span>
-              <span>16/09</span>
-              <span>17/09</span>
-              <span>18/09</span>
-              <span>19/09</span>
-              <span>20/09</span>
-              <span>21/09</span>
+              {faturamentoDiario.map((item) => (
+                <span key={item.data.toISOString()}>{item.data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</span>
+              ))}
             </div>
           </div>
         </div>
@@ -300,46 +422,29 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
           </div>
 
           <div className="flex flex-col items-center gap-4">
-            <div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: `conic-gradient(#3b82f6 0 48%, #a855f7 48% 84%, #34d399 84% 100%)` }}>
+            <div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: gradientePagamentos }}>
               <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white text-center">
                 <div>
                   <p className="text-2xl font-black text-[#101820]">{formatCurrency(financeiro.total)}</p>
-                  <p className="mt-1 text-xs text-slate-500">Total</p>
+                  <p className="mt-1 text-xs text-slate-500">Recebido</p>
                 </div>
               </div>
             </div>
 
             <div className="w-full space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-blue-500" />
-                  <span className="text-sm text-slate-600">Pix</span>
+              {pagamentosPorForma.map((forma) => (
+                <div key={forma.nome} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: forma.cor }} />
+                    <span className="text-sm text-slate-600">{forma.nome}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <span>{forma.quantidade}</span>
+                    <span className="text-slate-400">{formatCurrency(forma.total)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <span>{pedidos.filter((pedido) => pedido.formaPagamento === "Pix").length || 0}</span>
-                  <span className="text-slate-400">{formatCurrency(pedidos.filter((pedido) => pedido.formaPagamento === "Pix").reduce((sum, pedido) => sum + Number(pedido.total || 0), 0))}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-violet-500" />
-                  <span className="text-sm text-slate-600">Cartão</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <span>{pedidos.filter((pedido) => pedido.formaPagamento === "Cartão de crédito").length || 0}</span>
-                  <span className="text-slate-400">{formatCurrency(pedidos.filter((pedido) => pedido.formaPagamento === "Cartão de crédito").reduce((sum, pedido) => sum + Number(pedido.total || 0), 0))}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-emerald-500" />
-                  <span className="text-sm text-slate-600">Dinheiro</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <span>{pedidos.filter((pedido) => pedido.formaPagamento === "Dinheiro").length || 0}</span>
-                  <span className="text-slate-400">{formatCurrency(pedidos.filter((pedido) => pedido.formaPagamento === "Dinheiro").reduce((sum, pedido) => sum + Number(pedido.total || 0), 0))}</span>
-                </div>
-              </div>
+              ))}
+              {pagamentosPorForma.length === 0 && <p className="text-sm text-slate-500">Sem pagamentos recebidos neste período.</p>}
             </div>
           </div>
         </div>
@@ -358,31 +463,27 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
                 <span className="inline-flex h-3 w-3 rounded-full bg-emerald-500" />
                 <span>Pedidos concluídos</span>
               </div>
-              <span className="font-bold text-slate-800">{pedidos.length}</span>
+              <span className="font-bold text-slate-800">{statusEntrega}</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2">
               <div className="flex items-center gap-2 text-slate-600">
                 <span className="inline-flex h-3 w-3 rounded-full bg-red-500" />
                 <span>Pedidos cancelados</span>
               </div>
-              <span className="font-bold text-slate-800">0</span>
+              <span className="font-bold text-slate-800">{statusCancelados}</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2">
               <div className="flex items-center gap-2 text-slate-600">
                 <span className="inline-flex h-3 w-3 rounded-full bg-amber-500" />
-                <span>Pedidos pendentes</span>
+                <span>Pedidos em andamento</span>
               </div>
-              <span className="font-bold text-slate-800">0</span>
+              <span className="font-bold text-slate-800">{pedidosAbertos}</span>
             </div>
 
             <div className="mt-4 space-y-2 border-t border-[#edf1f6] pt-3">
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Taxa de entrega média</span>
-                <span className="font-bold text-slate-800">R$ 7,00</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Desconto médio</span>
-                <span className="font-bold text-red-600">R$ 5,30</span>
+                <span className="font-bold text-slate-800">{formatCurrency(taxaMediaEntrega)}</span>
               </div>
             </div>
           </div>
@@ -414,8 +515,8 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#edf1f6] text-slate-700">
-                {cardapio.slice(0, 5).map((produto, index) => (
-                  <tr key={produto.idItem} className="hover:bg-slate-50/80">
+                {produtosMaisVendidos.map((produto, index) => (
+                  <tr key={produto.nome} className="hover:bg-slate-50/80">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#f3f5f8] text-xs font-bold text-slate-500">
@@ -424,13 +525,18 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
                         <span className="font-medium text-[#1f2937]">{produto.nome}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-medium">{produto.idItem}</td>
-                    <td className="px-4 py-3 font-medium">{formatCurrency(produto.preco)}</td>
+                    <td className="px-4 py-3 font-medium">{produto.quantidade}</td>
+                    <td className="px-4 py-3 font-medium">{formatCurrency(produto.total)}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">{Math.max(8, 20 - index * 2)}%</span>
+                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-700">
+                        {financeiro.total ? `${Math.round((produto.total / financeiro.total) * 100)}%` : "0%"}
+                      </span>
                     </td>
                   </tr>
                 ))}
+                {produtosMaisVendidos.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500">Nenhuma venda paga neste período.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -456,6 +562,7 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
                 </div>
               </div>
             ))}
+            {vendasPorCategoria.length === 0 && <p className="text-sm text-slate-500">Nenhuma venda paga neste período.</p>}
           </div>
         </div>
 
@@ -502,10 +609,10 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
           </div>
 
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex h-36 w-36 items-center justify-center rounded-full" style={{ background: `conic-gradient(#ec4899 0 81%, #06b6d4 81% 92%, #22c55e 92% 98%, #f59e0b 98% 100%)` }}>
+            <div className="relative flex h-36 w-36 items-center justify-center rounded-full" style={{ background: gradienteStatus }}>
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-center">
                 <div>
-                  <p className="text-2xl font-black text-[#101820]">{pedidos.length}</p>
+                  <p className="text-2xl font-black text-[#101820]">{pedidosFiltradosPorPeriodo.length}</p>
                   <p className="text-xs text-slate-500">pedidos</p>
                 </div>
               </div>
@@ -538,16 +645,16 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
 
           <div className="space-y-4 text-sm text-slate-700">
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2.5">
-              <span>Receita bruta</span>
-              <span className="font-bold text-slate-800">{formatCurrency(financeiro.total * 1.2)}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2.5">
-              <span>Receita líquida</span>
+              <span>Faturamento recebido</span>
               <span className="font-bold text-slate-800">{formatCurrency(financeiro.total)}</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2.5">
-              <span>Lucro estimado</span>
-              <span className="font-bold text-emerald-700">{formatCurrency(financeiro.total * 0.32)}</span>
+              <span>Valor não recebido</span>
+              <span className="font-bold text-amber-700">{formatCurrency(valorNaoRecebido)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2.5">
+              <span>Pedidos registrados</span>
+              <span className="font-bold text-slate-800">{pedidosFiltradosPorPeriodo.length}</span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f8fafc] px-3 py-2.5">
               <span>Ticket médio</span>

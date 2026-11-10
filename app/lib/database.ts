@@ -8,6 +8,7 @@ export interface ClienteLocal {
     endereco: string
     bairro: string
     status: "Ativo" | "Inativo"
+    criadoEm: string
 }
 
 export interface CategoriaLocal {
@@ -96,7 +97,7 @@ function lancarErroBanco(operacao: string, error: { message: string; code?: stri
 export async function obterClientes(): Promise<ClienteLocal[]> {
     const { data, error } = await supabase
         .from("clientes")
-        .select("id_cliente, nome, telefone, email, endereco, bairro, ativo")
+        .select("id_cliente, nome, telefone, email, endereco, bairro, ativo, criado_em")
         .order("nome")
 
     lancarErroBanco("carregar clientes", error)
@@ -109,6 +110,7 @@ export async function obterClientes(): Promise<ClienteLocal[]> {
         endereco: cliente.endereco,
         bairro: cliente.bairro,
         status: cliente.ativo ? "Ativo" : "Inativo",
+        criadoEm: cliente.criado_em,
     }))
 }
 
@@ -141,6 +143,31 @@ export async function criarCliente(dados: {
     return Number(data.id_cliente)
 }
 
+export async function atualizarCliente(
+    idCliente: number,
+    alteracoes: Pick<ClienteLocal, "nome" | "telefone" | "email" | "endereco" | "bairro">,
+): Promise<void> {
+    const { error } = await supabase
+        .from("clientes")
+        .update({
+            nome: alteracoes.nome.trim(),
+            telefone: alteracoes.telefone.trim(),
+            email: alteracoes.email?.trim() || null,
+            endereco: alteracoes.endereco.trim(),
+            bairro: alteracoes.bairro.trim(),
+        })
+        .eq("id_cliente", idCliente)
+    lancarErroBanco("atualizar cliente", error)
+}
+
+export async function atualizarStatusCliente(idCliente: number, ativo: boolean): Promise<void> {
+    const { error } = await supabase
+        .from("clientes")
+        .update({ ativo })
+        .eq("id_cliente", idCliente)
+    lancarErroBanco("atualizar status do cliente", error)
+}
+
 export async function obterCategorias(): Promise<CategoriaLocal[]> {
     const { data, error } = await supabase
         .from("categorias")
@@ -168,6 +195,23 @@ export async function criarCategoria(nome: string): Promise<CategoriaLocal> {
     lancarErroBanco("criar categoria", error)
     if (!data) throw new Error("O Supabase não retornou a categoria criada.")
     return { idCategoria: Number(data.id_categoria), nome: data.nome, ordem: data.ordem }
+}
+
+export async function criarProduto(dados: {
+    idCategoria: number
+    nome: string
+    descricao: string
+    tipo: ProdutoLocal["tipo"]
+    preco: number
+}): Promise<void> {
+    const { error } = await supabase.from("produtos").insert({
+        id_categoria: dados.idCategoria,
+        nome: dados.nome.trim(),
+        descricao: dados.descricao.trim(),
+        tipo: dados.tipo,
+        preco: dados.preco,
+    })
+    lancarErroBanco("cadastrar produto", error)
 }
 
 export async function obterProdutos(): Promise<ProdutoLocal[]> {

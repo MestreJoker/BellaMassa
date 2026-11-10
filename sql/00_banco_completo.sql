@@ -34,7 +34,7 @@ DROP TABLE IF EXISTS
     public.produtos,
     public.categorias,
     public.perfis
-CASCADE;
+RESTRICT;
 
 -- Limpe funcoes antigas por nome, sem depender de tipos que podem nao existir.
 DO $$
@@ -53,21 +53,21 @@ BEGIN
               'usuario_admin', 'atualizar_timestamp', 'marcar_pedido_pago'
           )
     LOOP
-        EXECUTE format('DROP FUNCTION %s CASCADE', funcao.assinatura);
+        EXECUTE format('DROP FUNCTION %s', funcao.assinatura);
     END LOOP;
 END;
 $$;
 
-DROP TYPE IF EXISTS public.perfil_usuario CASCADE;
-DROP TYPE IF EXISTS public.status_registro CASCADE;
-DROP TYPE IF EXISTS public.tipo_produto CASCADE;
-DROP TYPE IF EXISTS public.tipo_componente CASCADE;
-DROP TYPE IF EXISTS public.tipo_entrega CASCADE;
-DROP TYPE IF EXISTS public.status_pedido CASCADE;
-DROP TYPE IF EXISTS public.forma_pagamento CASCADE;
-DROP TYPE IF EXISTS public.status_pagamento CASCADE;
-DROP TYPE IF EXISTS public.status_transacao CASCADE;
-DROP TYPE IF EXISTS public.tipo_desconto CASCADE;
+DROP TYPE IF EXISTS public.perfil_usuario;
+DROP TYPE IF EXISTS public.status_registro;
+DROP TYPE IF EXISTS public.tipo_produto;
+DROP TYPE IF EXISTS public.tipo_componente;
+DROP TYPE IF EXISTS public.tipo_entrega;
+DROP TYPE IF EXISTS public.status_pedido;
+DROP TYPE IF EXISTS public.forma_pagamento;
+DROP TYPE IF EXISTS public.status_pagamento;
+DROP TYPE IF EXISTS public.status_transacao;
+DROP TYPE IF EXISTS public.tipo_desconto;
 
 -- Perfil de acesso: somente quem tiver registro aqui e usuario da equipe.
 CREATE TABLE public.perfis (
@@ -196,15 +196,21 @@ CREATE POLICY perfil_proprio_ou_admin
     ON public.perfis FOR SELECT TO authenticated
     USING (auth_user_id = (SELECT auth.uid()) OR (SELECT public.usuario_admin()));
 
-CREATE POLICY categorias_equipe
+CREATE POLICY categorias_leitura_equipe
+    ON public.categorias FOR SELECT TO authenticated
+    USING ((SELECT public.usuario_equipe()));
+CREATE POLICY categorias_admin
     ON public.categorias FOR ALL TO authenticated
-    USING ((SELECT public.usuario_equipe()))
-    WITH CHECK ((SELECT public.usuario_equipe()));
+    USING ((SELECT public.usuario_admin()))
+    WITH CHECK ((SELECT public.usuario_admin()));
 
-CREATE POLICY produtos_equipe
+CREATE POLICY produtos_leitura_equipe
+    ON public.produtos FOR SELECT TO authenticated
+    USING ((SELECT public.usuario_equipe()));
+CREATE POLICY produtos_admin
     ON public.produtos FOR ALL TO authenticated
-    USING ((SELECT public.usuario_equipe()))
-    WITH CHECK ((SELECT public.usuario_equipe()));
+    USING ((SELECT public.usuario_admin()))
+    WITH CHECK ((SELECT public.usuario_admin()));
 
 CREATE POLICY clientes_equipe
     ON public.clientes FOR ALL TO authenticated
@@ -221,12 +227,27 @@ CREATE POLICY pedido_itens_equipe
     USING ((SELECT public.usuario_equipe()))
     WITH CHECK ((SELECT public.usuario_equipe()));
 
-REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+REVOKE ALL ON public.perfis, public.categorias, public.produtos,
+    public.clientes, public.pedidos, public.pedido_itens FROM anon, authenticated;
 GRANT SELECT ON public.perfis TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE
-    ON public.categorias, public.produtos, public.clientes, public.pedidos, public.pedido_itens
+GRANT SELECT ON public.categorias, public.produtos TO authenticated;
+GRANT INSERT, UPDATE ON public.categorias, public.produtos TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.clientes TO authenticated;
+GRANT SELECT ON public.pedidos TO authenticated;
+GRANT UPDATE (status) ON public.pedidos TO authenticated;
+GRANT SELECT ON public.pedido_itens TO authenticated;
+REVOKE ALL ON SEQUENCE
+    public.categorias_id_categoria_seq,
+    public.produtos_id_produto_seq,
+    public.clientes_id_cliente_seq,
+    public.pedidos_id_pedido_seq,
+    public.pedido_itens_id_item_pedido_seq
+    FROM anon, authenticated;
+GRANT USAGE, SELECT ON SEQUENCE
+    public.categorias_id_categoria_seq,
+    public.produtos_id_produto_seq,
+    public.clientes_id_cliente_seq
     TO authenticated;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
 -- Criacao atomica do pedido. Precos e nomes sao lidos do catalogo no banco.
 CREATE OR REPLACE FUNCTION public.criar_pedido(
@@ -234,12 +255,11 @@ CREATE OR REPLACE FUNCTION public.criar_pedido(
     p_tipo_entrega TEXT,
     p_forma_pagamento TEXT,
     p_itens JSONB,
-    p_taxa_entrega NUMERIC DEFAULT 0,
     p_observacoes TEXT DEFAULT NULL
 )
 RETURNS BIGINT
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
@@ -281,7 +301,7 @@ BEGIN
         IF NULLIF(v_endereco, '') IS NULL THEN
             RAISE EXCEPTION 'O cliente precisa ter endereco cadastrado para entrega.';
         END IF;
-        v_taxa_entrega := GREATEST(COALESCE(p_taxa_entrega, 0), 0);
+        v_taxa_entrega := 7;
     END IF;
 
     INSERT INTO public.pedidos (
@@ -333,7 +353,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.marcar_pedido_pago(p_id_pedido BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
@@ -344,7 +364,8 @@ BEGIN
 
     UPDATE public.pedidos
     SET status_pagamento = 'pago'
-    WHERE id_pedido = p_id_pedido;
+    WHERE id_pedido = p_id_pedido
+      AND status <> 'cancelado';
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Pedido nao encontrado.';
@@ -352,8 +373,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.criar_pedido(BIGINT, TEXT, TEXT, JSONB, NUMERIC, TEXT) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.criar_pedido(BIGINT, TEXT, TEXT, JSONB, NUMERIC, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.criar_pedido(BIGINT, TEXT, TEXT, JSONB, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.criar_pedido(BIGINT, TEXT, TEXT, JSONB, TEXT) TO authenticated;
 REVOKE ALL ON FUNCTION public.marcar_pedido_pago(BIGINT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.marcar_pedido_pago(BIGINT) TO authenticated;
 

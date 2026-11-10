@@ -39,6 +39,7 @@ export default function GraficoMovimentoPedidos() {
             if (diferencaDias >= 0 && diferencaDias <= 6) {
                 const indice = 6 - diferencaDias
                 const valorAtual = ultimos7Dias[indice]?.valor ?? 0
+                if (periodo === "Faturamento" && pedido.statusPagamento !== "Pago") return
                 ultimos7Dias[indice].valor = valorAtual + (periodo === "Faturamento" ? Number(pedido.total || 0) : 1)
             }
         })

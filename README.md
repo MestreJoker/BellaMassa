@@ -40,11 +40,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 O esquema simples esta em `sql/00_banco_completo.sql`. Ele cria perfis da
 equipe, categorias, produtos, clientes, pedidos e itens do pedido. Os precos
 ficam diretamente em `produtos`; enderecos ficam em `clientes`.
-O script cria categorias iniciais, mas nao inventa produtos: cadastre o
-cardapio real em **Table Editor > produtos**, escolhendo o `id_categoria`.
-Cadastre sabores/tamanhos como produtos separados. A taxa de entrega do pedido
-continua fixa em R$ 7,00 no aplicativo. Clientes e pedidos podem ser
-cadastrados pelo proprio aplicativo.
+O script cria categorias iniciais, mas nao inventa produtos. Administradores
+podem cadastrar categorias e produtos na tela **Cardapio**; operadores podem
+consultar o catalogo, cadastrar clientes e operar pedidos. O banco tambem
+restringe essas permissoes com RLS. Cadastre sabores/tamanhos como produtos
+separados. A taxa de entrega e validada pelo banco e fixa em R$ 7,00.
 
 ### Instalar ou reiniciar o esquema
 
@@ -55,7 +55,8 @@ cadastrados pelo proprio aplicativo.
 recria-las. Tabelas publicas de outros sistemas nao sao removidas. As contas
 do Supabase Auth em `auth.users` nao sao apagadas, mas os perfis de acesso
 precisam ser recriados. Confirme o projeto e salve os dados que quiser manter
-antes de executar.**
+antes de executar. Se uma tabela fora da lista depender dessas tabelas, o
+script interrompe a execucao em vez de remove-la em cascata.**
 
 ### Criar o primeiro usuario interno
 
@@ -86,6 +87,14 @@ Para criar um operador, repita o procedimento com `FALSE` no lugar de `TRUE`.
 O perfil precisa existir para que o login tenha acesso ao sistema. Nunca grave
 senhas em `public.perfis` nem as insira por SQL: o Supabase Auth gerencia as
 credenciais. O banco guarda somente o nome, e-mail e indicador de administrador.
+
+### Recuperar senha
+
+Adicione `http://localhost:3000/auth/callback` em
+**Authentication > URL Configuration > Redirect URLs** no Supabase. Em
+producao, adicione tambem a URL correspondente ao dominio publicado. Na tela
+de login, informe o e-mail e use **Esqueceu sua senha?**; o link recebido abre
+a tela para definir uma nova senha.
 
 ### Ligar o aplicativo ao Supabase
 

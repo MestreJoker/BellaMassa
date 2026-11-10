@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-    faArrowUp,
     faCheck,
     faCreditCard,
     faDollarSign,
@@ -27,6 +26,9 @@ export default function Pagamentos() {
     const [pesquisa, setPesquisa] = useState("");
     const [statusFiltro, setStatusFiltro] = useState("Todos");
     const [periodoFiltro, setPeriodoFiltro] = useState("todos");
+    const [erroCarga, setErroCarga] = useState("");
+    const [erroAcao, setErroAcao] = useState("");
+    const [pedidoAtualizando, setPedidoAtualizando] = useState<number | null>(null);
 
     useEffect(() => {
         async function carregarDados() {
@@ -39,6 +41,7 @@ export default function Pagamentos() {
                 setClientes(respostaClientes);
             } catch (erro) {
                 console.error("Não foi possível carregar os pagamentos.", erro);
+                setErroCarga("Não foi possível carregar os pagamentos. Atualize a página e tente novamente.");
             }
         }
 
@@ -50,6 +53,8 @@ export default function Pagamentos() {
     }
 
     async function marcarComoPago(idPedido: number) {
+        setErroAcao("");
+        setPedidoAtualizando(idPedido);
         try {
             await marcarPedidoPago(idPedido);
             setPedidos((atuais) => atuais.map((pedido) => pedido.idPedido === idPedido
@@ -57,6 +62,9 @@ export default function Pagamentos() {
                 : pedido));
         } catch (erro) {
             console.error("Não foi possível registrar o pagamento.", erro);
+            setErroAcao("Não foi possível registrar o pagamento. Atualize a página e tente novamente.");
+        } finally {
+            setPedidoAtualizando(null);
         }
     }
 
@@ -73,6 +81,18 @@ export default function Pagamentos() {
         });
     }, [pedidos, periodoFiltro]);
 
+    const pedidosPeriodoAnterior = useMemo(() => {
+        if (periodoFiltro === "todos") return [];
+        const agora = new Date().getTime();
+        const dias = Number(periodoFiltro.replace("d", ""));
+        const inicioAtual = agora - dias * 24 * 60 * 60 * 1000;
+        const inicioAnterior = inicioAtual - dias * 24 * 60 * 60 * 1000;
+        return pedidos.filter((pedido) => {
+            const instante = new Date(pedido.dataPedido).getTime();
+            return instante >= inicioAnterior && instante < inicioAtual;
+        });
+    }, [pedidos, periodoFiltro]);
+
     const clientesMap = useMemo(
         () => new Map(clientes.map((cliente) => [cliente.idCliente, cliente.nome])),
         [clientes],
@@ -81,7 +101,7 @@ export default function Pagamentos() {
     const pedidosFormatados = useMemo(() => {
         return pedidosFiltradosPorPeriodo.map((pedido) => {
             const clienteNome = clientesMap.get(pedido.idCliente) ?? `Cliente ${pedido.idCliente}`;
-            const statusNormalizado = estaPago(pedido) ? "Pago" : "Pendente";
+            const statusNormalizado = pedido.status === "Cancelado" ? "Cancelado" : estaPago(pedido) ? "Pago" : "Pendente";
 
             return {
                 id: `#${pedido.idPedido}`,
@@ -96,7 +116,8 @@ export default function Pagamentos() {
                         ? faDollarSign
                         : faWallet,
                 status: statusNormalizado,
-                statusTipo: statusNormalizado === "Pago" ? "success" : "warning",
+                statusTipo: statusNormalizado === "Pago" ? "success" : statusNormalizado === "Cancelado" ? "neutral" : "warning",
+                cancelado: pedido.status === "Cancelado",
                 data: new Date(pedido.dataPedido).toLocaleDateString("pt-BR"),
                 horario: new Date(pedido.dataPedido).toLocaleTimeString("pt-BR", {
                     hour: "2-digit",
@@ -124,17 +145,28 @@ export default function Pagamentos() {
     const totalRecebido = pedidosFiltradosPorPeriodo
         .filter(estaPago)
         .reduce((total, pedido) => total + Number(pedido.total || 0), 0);
-    const totalPedidos = pedidosFiltradosPorPeriodo.length;
-    const pagamentosPix = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.formaPagamento === "Pix").length;
-    const pagamentosCartao = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.formaPagamento === "Cartão de crédito").length;
-    const pagamentosDinheiro = pedidosFiltradosPorPeriodo.filter((pedido) => pedido.formaPagamento === "Dinheiro").length;
+    const totalAnterior = pedidosPeriodoAnterior
+        .filter(estaPago)
+        .reduce((total, pedido) => total + Number(pedido.total || 0), 0);
+    const pedidosPagos = pedidosFiltradosPorPeriodo.filter(estaPago);
+    const totalPedidos = pedidosPagos.length;
+    const pagamentosPix = pedidosPagos.filter((pedido) => pedido.formaPagamento === "Pix").length;
+    const pagamentosCartao = pedidosPagos.filter((pedido) =>
+        ["Cartão de crédito", "Cartão de débito"].includes(pedido.formaPagamento),
+    ).length;
+    const pagamentosDinheiro = pedidosPagos.filter((pedido) => pedido.formaPagamento === "Dinheiro").length;
+    const variacaoRecebido = periodoFiltro === "todos"
+        ? "—"
+        : totalAnterior === 0
+        ? totalRecebido === 0 ? "0%" : "Novo"
+        : `${totalRecebido > totalAnterior ? "+" : ""}${Math.round(((totalRecebido - totalAnterior) / totalAnterior) * 100)}%`;
 
     const cardsResumo = [
         {
             titulo: "Total recebido",
             valor: formatCurrency(totalRecebido),
-            percentual: "+12%",
-            detalhe: "em relação ao período anterior",
+            percentual: variacaoRecebido,
+            detalhe: periodoFiltro === "todos" ? "no período selecionado" : "comparado ao período anterior",
             icone: faMoneyBillWave,
             cor: "bg-emerald-100 text-emerald-700",
             texto: "text-emerald-700",
@@ -173,6 +205,8 @@ export default function Pagamentos() {
 
     return (
         <div className="flex min-w-0 flex-col gap-4">
+            {erroCarga && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erroCarga}</p>}
+            {erroAcao && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erroAcao}</p>}
             <header className="flex flex-col gap-3 rounded-[18px] border border-[#e7ecf3] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)] xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f3f6fb] text-[#1f2937]">
@@ -223,10 +257,13 @@ export default function Pagamentos() {
                             <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${card.cor}`}>
                                 <FontAwesomeIcon icon={card.icone} className="text-lg" />
                             </div>
-                            <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-600">
-                                <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
-                                <span>{card.percentual}</span>
-                            </div>
+                            {card.percentual && (
+                                <div className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold ${
+                                    card.percentual.startsWith("-") ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"
+                                }`}>
+                                    <span>{card.percentual}</span>
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-4">
@@ -271,6 +308,7 @@ export default function Pagamentos() {
                                 <option value="Todos">Todos</option>
                                 <option value="Pago">Pago</option>
                                 <option value="Pendente">Pendente</option>
+                                <option value="Cancelado">Cancelado</option>
                             </select>
                         </div>
                     </div>
@@ -328,12 +366,12 @@ export default function Pagamentos() {
                                             <button
                                                 type="button"
                                                 onClick={() => marcarComoPago(pagamento.idPedido)}
-                                                disabled={pagamento.status === "Pago"}
+                                                disabled={pagamento.status === "Pago" || pagamento.cancelado || pedidoAtualizando === pagamento.idPedido}
                                                 aria-label={pagamento.status === "Pago" ? `Pagamento ${pagamento.id} já pago` : `Marcar pagamento ${pagamento.id} como pago`}
                                                 className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-default disabled:opacity-60"
                                             >
                                                 <FontAwesomeIcon icon={faCheck} className="text-sm" />
-                                                {pagamento.status === "Pago" ? "Pago" : "Confirmar"}
+                                                {pagamento.status === "Pago" ? "Pago" : pagamento.cancelado ? "Cancelado" : pedidoAtualizando === pagamento.idPedido ? "Salvando..." : "Confirmar"}
                                             </button>
                                         </td>
                                     </tr>

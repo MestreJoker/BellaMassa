@@ -104,7 +104,6 @@ export async function criarPedido(dados: {
     idCliente: number
     tipoEntrega: string
     formaPagamento: string
-    taxaEntrega: number
     observacoes?: string
     itens: Array<{
         idProduto: number
@@ -116,7 +115,6 @@ export async function criarPedido(dados: {
         p_cliente: dados.idCliente,
         p_tipo_entrega: tipoEntregaParaBanco(dados.tipoEntrega),
         p_forma_pagamento: formaPagamentoParaBanco(dados.formaPagamento),
-        p_taxa_entrega: dados.taxaEntrega,
         p_observacoes: dados.observacoes?.trim() || null,
         p_itens: dados.itens.map((item) => ({
             id_produto: item.idProduto,

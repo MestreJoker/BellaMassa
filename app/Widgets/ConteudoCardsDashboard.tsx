@@ -5,6 +5,11 @@ import CardDashboard from "../Components/CardDahsboard"
 interface ConteudoCardsDashboardProps {
     pagina: string
     valor1: number
+    clientesStats?: {
+        ativos: number
+        novosNoMes: number
+        bairrosAtendidos: number
+    }
     dashboardStats?: {
         pedidosHoje?: number
         emPreparo?: number
@@ -46,17 +51,17 @@ export default function ConteudoCardsDashboard(props: ConteudoCardsDashboardProp
         {
             icone: <FontAwesomeIcon icon={faPhone} />,
             texto: "Clientes ativos",
-            valor: Math.max(1, Math.round(props.valor1 * 0.8)),
+            valor: props.clientesStats?.ativos ?? 0,
         },
         {
             icone: <FontAwesomeIcon icon={faClock} />,
             texto: "Novos este mês",
-            valor: 3,
+            valor: props.clientesStats?.novosNoMes ?? 0,
         },
         {
             icone: <FontAwesomeIcon icon={faLocationDot} />,
             texto: "Bairros atendidos",
-            valor: 4,
+            valor: props.clientesStats?.bairrosAtendidos ?? 0,
         },
     ]
 

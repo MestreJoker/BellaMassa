@@ -28,7 +28,7 @@ export default function Pedido({ onVoltarPedidos }: PedidoProps) {
     const [clienteId, setClienteId] = useState<number>(0)
     const [clienteEndereco, setClienteEndereco] = useState("")
     const [itensCarrinho, setItensCarrinho] = useState<ItemCarrinho[]>([])
-    const [taxaEntrega] = useState(7)
+    const taxaEntrega = 7
     const [tipoEntrega, setTipoEntrega] = useState("")
     const [mensagemPedido, setMensagemPedido] = useState("")
     const [modalNovoClienteAberto, setModalNovoClienteAberto] = useState(false)
@@ -99,7 +99,6 @@ export default function Pedido({ onVoltarPedidos }: PedidoProps) {
                 idCliente: clienteId,
                 tipoEntrega: dadosCheckout.tipoEntrega,
                 formaPagamento: dadosCheckout.formaPagamento,
-                taxaEntrega: dadosCheckout.tipoEntrega === "Entrega" ? taxaEntrega : 0,
                 itens: itensCarrinho.map((item) => ({
                     idProduto: item.idProduto,
                     quantidade: item.quantidade,

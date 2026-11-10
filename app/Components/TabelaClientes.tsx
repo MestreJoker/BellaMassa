@@ -1,6 +1,6 @@
 "use client"
 
-import { faChevronLeft, faChevronRight, faEllipsisH, faPencil, faSearch, faUsers } from "@fortawesome/free-solid-svg-icons"
+import { faChevronLeft, faChevronRight, faSearch, faUsers } from "@fortawesome/free-solid-svg-icons"
 import { faWhatsapp } from "@fortawesome/free-brands-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { useEffect, useState } from "react"
@@ -150,17 +150,16 @@ export default function TabelaClientes(props: TabelaClientesProps) {
                             <th className="bg-[#f2f6fb] px-4 py-3 text-left sm:px-5">Endereço</th>
                             <th className="bg-[#f2f6fb] px-4 py-3 text-left sm:px-5">Bairro</th>
                             <th className="bg-[#f2f6fb] px-4 py-3 text-left sm:px-5">Status</th>
-                            <th className="bg-[#f2f6fb] px-4 py-3 text-center sm:px-5">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {carregando ? (
                             <tr>
-                                <td colSpan={6} className="px-5 py-12 text-center text-[#657a99]">Carregando clientes...</td>
+                                <td colSpan={5} className="px-5 py-12 text-center text-[#657a99]">Carregando clientes...</td>
                             </tr>
                         ) : clientesFiltrados.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-5 py-12 text-center text-[#657a99]">Nenhum cliente encontrado.</td>
+                                <td colSpan={5} className="px-5 py-12 text-center text-[#657a99]">Nenhum cliente encontrado.</td>
                             </tr>
                         ) : (
                             clientesVisiveis.map((item) => (
@@ -192,24 +191,6 @@ export default function TabelaClientes(props: TabelaClientesProps) {
                                         }`}>
                                             {item.status}
                                         </span>
-                                    </td>
-                                    <td className="whitespace-nowrap px-4 py-2.5 text-center sm:px-5 sm:py-3">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <button
-                                                type="button"
-                                                aria-label={`Editar ${item.nome}`}
-                                                className="inline-flex size-9 items-center justify-center rounded-md border border-[#dce7f4] text-[#18345b] transition-colors hover:bg-[#edf4ff]"
-                                            >
-                                                <FontAwesomeIcon icon={faPencil} className="text-xs" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                aria-label="Mais opções"
-                                                className="inline-flex size-9 items-center justify-center rounded-md border border-[#dce7f4] text-[#18345b] transition-colors hover:bg-[#edf4ff]"
-                                            >
-                                                <FontAwesomeIcon icon={faEllipsisH} className="text-xs" />
-                                            </button>
-                                        </div>
                                     </td>
                                 </tr>
                             ))

@@ -1,7 +1,6 @@
 'use client'
 import BarraLateral from "./../Widgets/BarraLateral";
-import { useState } from "react";
-import { useEffect } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Header from "./../Components/Header";
 import Dashboard from "./../Conteudo/Dashboard";
@@ -13,14 +12,27 @@ import Entregas from "./../Conteudo/Entregas";
 import Pagamentos from "./../Conteudo/Pagamentos";
 import Relatorios from "./../Conteudo/Relatorios";
 import { encerrarSessao, obterUsuarioSessao } from "./../lib/sessao";
+import {
+  assinarNavegacaoPainel,
+  obterEstadoNavegacaoPainel,
+  obterEstadoNavegacaoPainelServidor,
+  salvarNavegacaoPainel,
+} from "./../lib/navegacaoPainel";
 import { supabase } from "../../lib/supabase";
 
 export default function Home() {
   const router = useRouter()
-  const [paginaAtual, setPaginaAual] = useState(0)
-  const [criandoPedido, setCriandoPedido] = useState(false)
+  const estadoNavegacao = useSyncExternalStore(
+    assinarNavegacaoPainel,
+    obterEstadoNavegacaoPainel,
+    obterEstadoNavegacaoPainelServidor,
+  )
+  const [paginaSalva, pedidoNovoSalvo] = estadoNavegacao.split(":")
+  const paginaAtual = Number(paginaSalva)
+  const criandoPedido = pedidoNovoSalvo === "true"
   const [menuMobileAberto, setMenuMobileAberto] = useState(false)
   const [verificandoAcesso, setVerificandoAcesso] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     let ativo = true
@@ -33,6 +45,7 @@ export default function Home() {
           router.replace("/")
           return
         }
+        setIsAdmin(usuario.isAdmin)
         setVerificandoAcesso(false)
       })
       .catch((erro: unknown) => {
@@ -52,8 +65,7 @@ export default function Home() {
   }
 
   function receberPaginaAtual(pagina: number){
-      setPaginaAual(pagina)
-      if (pagina === 1) setCriandoPedido(false)
+      salvarNavegacaoPainel(pagina, false)
   }
 
   if (verificandoAcesso) {
@@ -73,10 +85,10 @@ export default function Home() {
         <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-[#ebf0f6] p-3 sm:p-4 md:p-5 lg:p-6">
             {paginaAtual == 0 && <Dashboard onVerTodosPedidos={() => receberPaginaAtual(1)} />}
             {paginaAtual == 1 && (criandoPedido
-              ? <Pedido onVoltarPedidos={() => setCriandoPedido(false)} />
-              : <Pedidos onNovoPedido={() => setCriandoPedido(true)} />)}
+              ? <Pedido onVoltarPedidos={() => salvarNavegacaoPainel(1, false)} />
+              : <Pedidos onNovoPedido={() => salvarNavegacaoPainel(1, true)} />)}
             {paginaAtual == 2 && <Clientes />}
-            {paginaAtual == 3 && <Cardapio />}
+            {paginaAtual == 3 && <Cardapio isAdmin={isAdmin} />}
             {paginaAtual == 4 && <Entregas />}
             {paginaAtual == 5 && <Pagamentos />}
             {paginaAtual == 6 && <Relatorios onVerTodosPedidos={() => receberPaginaAtual(1)} onVerProdutos={() => receberPaginaAtual(3)} />}

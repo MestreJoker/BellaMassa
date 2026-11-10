@@ -23,19 +23,26 @@ import {
 import {
     atualizarProduto as atualizarProdutoBanco,
     criarCategoria,
+    criarProduto,
     obterCategorias,
     obterProdutos,
     type CategoriaLocal,
     type ProdutoLocal,
 } from "../lib/database";
 
-export default function Cardapio() {
+export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
     const [itens, setItens] = useState<ProdutoLocal[]>([]);
     const [categoriasBanco, setCategoriasBanco] = useState<CategoriaLocal[]>([]);
     const [categoriaAtiva, setCategoriaAtiva] = useState<number | "Todos">("Todos");
     const [busca, setBusca] = useState("");
     const [produtoSelecionadoId, setProdutoSelecionadoId] = useState<number | null>(null);
     const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
+    const [modalNovoAberto, setModalNovoAberto] = useState(false);
+    const [novoNome, setNovoNome] = useState("");
+    const [novaDescricao, setNovaDescricao] = useState("");
+    const [novoPreco, setNovoPreco] = useState("");
+    const [novoTipo, setNovoTipo] = useState<ProdutoLocal["tipo"]>("pizza");
+    const [novaCategoriaId, setNovaCategoriaId] = useState(0);
     const [precoEditado, setPrecoEditado] = useState("");
     const [descricaoEditada, setDescricaoEditada] = useState("");
     const [destaqueEditado, setDestaqueEditado] = useState(false);
@@ -66,6 +73,7 @@ export default function Cardapio() {
                 setItens(itensCarregados);
                 setCategoriasBanco(categoriasCarregadas);
                 setProdutoSelecionadoId(itensCarregados[0]?.idItem ?? null);
+                setNovaCategoriaId(categoriasCarregadas[0]?.idCategoria ?? 0);
             } catch (erro) {
                 console.error("Não foi possível carregar o catálogo.", erro);
                 setErroBanco("Não foi possível carregar os dados do catálogo.");
@@ -141,21 +149,70 @@ export default function Cardapio() {
     }
 
     async function alternarDisponibilidade() {
-        if (produtoSelecionado) {
-            await atualizarProduto(produtoSelecionado.idItem, { ativo: !produtoSelecionado.ativo });
+        if (!produtoSelecionado) return
+        setSalvando(true)
+        try {
+            await atualizarProduto(produtoSelecionado.idItem, { ativo: !produtoSelecionado.ativo })
+        } catch (erro) {
+            console.error("Não foi possível alterar a disponibilidade do produto.", erro)
+        } finally {
+            setSalvando(false)
         }
     }
 
     async function adicionarCategoria() {
         const nome = window.prompt("Nome da nova categoria")?.trim();
-        if (!nome || categoriasBanco.some((categoria) => categoria.nome.toLowerCase() === nome.toLowerCase())) return;
+        if (!nome) return;
+        if (categoriasBanco.some((categoria) => categoria.nome.toLowerCase() === nome.toLowerCase())) {
+            setErroBanco("Já existe uma categoria com esse nome.");
+            return;
+        }
 
         try {
             const categoria = await criarCategoria(nome);
             setCategoriasBanco((atuais) => [...atuais, categoria]);
+            setNovaCategoriaId(categoria.idCategoria);
+            setErroBanco("");
         } catch (erro) {
             console.error("Não foi possível criar a categoria.", erro);
             setErroBanco("Não foi possível criar a categoria.");
+        }
+    }
+
+    async function salvarNovoProduto(evento: FormEvent<HTMLFormElement>) {
+        evento.preventDefault();
+        const preco = Number(novoPreco.trim().replace(",", "."));
+        if (!novaCategoriaId || !novoNome.trim() || !Number.isFinite(preco) || preco < 0) {
+            setErroBanco("Informe nome, categoria e um preço válido para o produto.");
+            return;
+        }
+
+        setSalvando(true);
+        setErroBanco("");
+        try {
+            await criarProduto({
+                idCategoria: novaCategoriaId,
+                nome: novoNome,
+                descricao: novaDescricao,
+                tipo: novoTipo,
+                preco,
+            });
+            const produtosAtualizados = await obterProdutos();
+            setItens(produtosAtualizados);
+            setProdutoSelecionadoId(
+                produtosAtualizados.find((produto) =>
+                    produto.idCategoria === novaCategoriaId && produto.nome === novoNome.trim(),
+                )?.idItem ?? null,
+            );
+            setNovoNome("");
+            setNovaDescricao("");
+            setNovoPreco("");
+            setModalNovoAberto(false);
+        } catch (erro) {
+            console.error("Não foi possível cadastrar o produto.", erro);
+            setErroBanco("Não foi possível cadastrar o produto. Verifique se já existe outro com esse nome.");
+        } finally {
+            setSalvando(false);
         }
     }
 
@@ -231,6 +288,17 @@ export default function Cardapio() {
                     </div>
                 </div>
 
+                {isAdmin && (
+                    <button
+                        type="button"
+                        onClick={() => setModalNovoAberto(true)}
+                        className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#d92626] px-4 py-2.5 text-sm font-bold text-white"
+                    >
+                        <FontAwesomeIcon icon={faPlus} />
+                        Novo produto
+                    </button>
+                )}
+
                 <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
                     {carregando ? (
                         <p className="col-span-full p-8 text-center text-sm text-slate-500">Carregando catálogo...</p>
@@ -305,9 +373,11 @@ export default function Cardapio() {
                             <p className="text-xl font-black text-[#111827]">Detalhes do item</p>
                         </div>
                     </div>
-                    <button type="button" onClick={abrirModalEdicao} aria-label="Editar produto" className="rounded-lg p-2 text-[#475569] transition-colors hover:bg-white/80">
-                        <FontAwesomeIcon icon={faEdit} className="text-base" />
-                    </button>
+                    {isAdmin && (
+                        <button type="button" onClick={abrirModalEdicao} aria-label="Editar produto" className="rounded-lg p-2 text-[#475569] transition-colors hover:bg-white/80">
+                            <FontAwesomeIcon icon={faEdit} className="text-base" />
+                        </button>
+                    )}
                 </div>
 
                 {produtoSelecionado && (
@@ -352,10 +422,11 @@ export default function Cardapio() {
                             <p className="mt-2 text-sm leading-relaxed text-slate-600">{produtoSelecionado.descricao}</p>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3">
+                        {isAdmin && <div className="mt-4 grid grid-cols-2 gap-3">
                             <button
                                 type="button"
                                 onClick={abrirModalEdicao}
+                                disabled={salvando}
                                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d92626] px-3 py-3 text-sm font-bold text-white shadow-[0_10px_18px_rgba(217,38,38,0.25)]"
                             >
                                 <FontAwesomeIcon icon={faEdit} className="text-sm" />
@@ -364,12 +435,13 @@ export default function Cardapio() {
                             <button
                                 type="button"
                                 onClick={alternarDisponibilidade}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#dbe2eb] bg-white px-3 py-3 text-sm font-bold text-[#1d2733]"
+                                disabled={salvando}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#dbe2eb] bg-white px-3 py-3 text-sm font-bold text-[#1d2733] disabled:opacity-60"
                             >
                                 <FontAwesomeIcon icon={faPowerOff} className="text-sm" />
                                 {produtoSelecionado.ativo ? "Inativar" : "Ativar"}
                             </button>
-                        </div>
+                        </div>}
                     </>
                 )}
 
@@ -396,29 +468,80 @@ export default function Cardapio() {
                         <div className="rounded-xl bg-[#eaf3ff] p-3">
                             <div className="flex items-center gap-2 text-blue-700">
                                 <FontAwesomeIcon icon={faBoxesPacking} className="text-xs" />
-                                <span className="font-bold">Estoque</span>
+                                <span className="font-bold">Produtos cadastrados</span>
                             </div>
                             <p className="mt-2 text-2xl font-black text-[#101820]">{totalEstoque}</p>
                         </div>
                         <div className="rounded-xl bg-[#f6eaf8] p-3">
                             <div className="flex items-center gap-2 text-violet-700">
                                 <FontAwesomeIcon icon={faTruck} className="text-xs" />
-                                <span className="font-bold">Entrega</span>
+                                <span className="font-bold">Categorias</span>
                             </div>
-                            <p className="mt-2 text-2xl font-black text-[#101820]">24 min</p>
+                            <p className="mt-2 text-2xl font-black text-[#101820]">{categoriasBanco.length}</p>
                         </div>
                     </div>
                 </div>
 
-                <button
+                {isAdmin && <button
                     type="button"
                     onClick={adicionarCategoria}
                     className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#dfe6ef] bg-[#e5e7eb] px-3 py-3 text-sm font-bold text-[#6b7280]"
                 >
                     <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
                     Nova categoria
-                </button>
+                </button>}
             </aside>
+
+            {modalNovoAberto && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+                    <section role="dialog" aria-modal="true" aria-labelledby="titulo-modal-novo-produto" className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
+                        <div className="mb-5 flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <h2 id="titulo-modal-novo-produto" className="text-xl font-bold text-slate-900">Novo produto</h2>
+                            <button type="button" onClick={() => setModalNovoAberto(false)} aria-label="Fechar" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                                <FontAwesomeIcon icon={faXmark} />
+                            </button>
+                        </div>
+                        <form onSubmit={salvarNovoProduto} className="grid gap-4 sm:grid-cols-2">
+                            <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700 sm:col-span-2">
+                                Nome
+                                <input value={novoNome} onChange={(evento) => setNovoNome(evento.target.value)} required maxLength={120} className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal" />
+                            </label>
+                            <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
+                                Categoria
+                                <select value={novaCategoriaId} onChange={(evento) => setNovaCategoriaId(Number(evento.target.value))} required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal">
+                                    {categoriasBanco.map((categoria) => <option key={categoria.idCategoria} value={categoria.idCategoria}>{categoria.nome}</option>)}
+                                </select>
+                            </label>
+                            <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
+                                Tipo
+                                <select value={novoTipo} onChange={(evento) => setNovoTipo(evento.target.value as ProdutoLocal["tipo"])} className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal">
+                                    <option value="pizza">Pizza</option>
+                                    <option value="bebida">Bebida</option>
+                                    <option value="sobremesa">Sobremesa</option>
+                                    <option value="borda">Borda</option>
+                                    <option value="adicional">Adicional</option>
+                                    <option value="outro">Outro</option>
+                                </select>
+                            </label>
+                            <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700 sm:col-span-2">
+                                Preço (R$)
+                                <input value={novoPreco} onChange={(evento) => setNovoPreco(evento.target.value)} inputMode="decimal" required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal" />
+                            </label>
+                            <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700 sm:col-span-2">
+                                Descrição
+                                <textarea value={novaDescricao} onChange={(evento) => setNovaDescricao(evento.target.value)} rows={3} className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal" />
+                            </label>
+                            {categoriasBanco.length === 0 && <p role="alert" className="text-sm text-red-700 sm:col-span-2">Cadastre uma categoria antes de criar produtos.</p>}
+                            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:col-span-2 sm:flex-row sm:justify-end">
+                                <button type="button" onClick={() => setModalNovoAberto(false)} className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold">Cancelar</button>
+                                <button type="submit" disabled={salvando || categoriasBanco.length === 0} className="rounded-lg bg-[#d92626] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+                                    {salvando ? "Salvando..." : "Cadastrar produto"}
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            )}
 
             {modalEdicaoAberto && produtoSelecionado && (
                 <div

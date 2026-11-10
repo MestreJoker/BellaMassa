@@ -1,12 +1,12 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faCoins, faArrowUp } from "@fortawesome/free-solid-svg-icons"
+import { faCoins, faArrowTrendDown, faArrowTrendUp } from "@fortawesome/free-solid-svg-icons"
 
 interface CardReceitaDiaProps {
     valor?: number
-    percentual?: number
+    percentual?: number | null
 }
 
-export default function CardReceitaDia({ valor = 682.4, percentual = 15 }: CardReceitaDiaProps) {
+export default function CardReceitaDia({ valor = 0, percentual = null }: CardReceitaDiaProps) {
     const valorFormatado = new Intl.NumberFormat("pt-BR", {
         style: "currency",
         currency: "BRL",
@@ -26,10 +26,12 @@ export default function CardReceitaDia({ valor = 682.4, percentual = 15 }: CardR
             <div className="flex items-end justify-between">
                 <div>
                     <span className="text-xl font-black text-slate-900 sm:text-2xl">{valorFormatado}</span>
-                    <div className="flex items-center gap-1.5 mt-1 text-xs font-semibold text-emerald-600">
-                        <FontAwesomeIcon icon={faArrowUp} className="text-[10px]" />
+                    <div className={`mt-1 flex items-center gap-1.5 text-xs font-semibold ${
+                        percentual !== null && percentual < 0 ? "text-rose-600" : "text-emerald-600"
+                    }`}>
+                        {percentual !== null && <FontAwesomeIcon icon={percentual < 0 ? faArrowTrendDown : faArrowTrendUp} className="text-[10px]" />}
                         <span>
-                            {percentual}% <span className="font-normal text-slate-500">em relação a ontem</span>
+                            {percentual === null ? "Sem comparação com ontem" : `${percentual > 0 ? "+" : ""}${percentual}% em relação a ontem`}
                         </span>
                     </div>
                 </div>
