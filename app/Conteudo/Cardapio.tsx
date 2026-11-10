@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import Axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBolt,
@@ -21,83 +20,57 @@ import {
     faTruck,
     faXmark,
 } from "@fortawesome/free-solid-svg-icons";
-
-interface ItemCardapioJson {
-    idItem: number;
-    idCategoria: number;
-    nome: string;
-    descricao: string;
-    preco: number;
-    imagem: string;
-    ativo?: boolean;
-    destaque?: boolean;
-}
-
-const categorias: Array<{ id: number | "Todos"; nome: string; icone?: typeof faPizzaSlice }> = [
-    { id: "Todos", nome: "Todos" },
-    { id: 1, nome: "Pizzas", icone: faPizzaSlice },
-    { id: 2, nome: "Bebidas", icone: faGlassWater },
-    { id: 3, nome: "Sobremesas", icone: faIceCream },
-    { id: 4, nome: "Bordas", icone: faCircleDot },
-    { id: 5, nome: "Adicionais", icone: faPlus },
-];
-
-const nomeCategorias: Record<number, string> = {
-    1: "Pizzas",
-    2: "Bebidas",
-    3: "Sobremesas",
-    4: "Bordas",
-    5: "Adicionais",
-};
-
-function obterNomeCategoria(idCategoria: number, categoriasExtras: string[]) {
-    return nomeCategorias[idCategoria] ?? categoriasExtras[idCategoria - 6] ?? "Outros";
-}
+import {
+    atualizarProduto as atualizarProdutoBanco,
+    criarCategoria,
+    obterCategorias,
+    obterProdutos,
+    type CategoriaLocal,
+    type ProdutoLocal,
+} from "../lib/database";
 
 export default function Cardapio() {
-    const [itens, setItens] = useState<ItemCardapioJson[]>([]);
+    const [itens, setItens] = useState<ProdutoLocal[]>([]);
+    const [categoriasBanco, setCategoriasBanco] = useState<CategoriaLocal[]>([]);
     const [categoriaAtiva, setCategoriaAtiva] = useState<number | "Todos">("Todos");
     const [busca, setBusca] = useState("");
     const [produtoSelecionadoId, setProdutoSelecionadoId] = useState<number | null>(null);
-    const [categoriasExtras, setCategoriasExtras] = useState<string[]>([]);
     const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
     const [precoEditado, setPrecoEditado] = useState("");
     const [descricaoEditada, setDescricaoEditada] = useState("");
     const [destaqueEditado, setDestaqueEditado] = useState(false);
     const [erroEdicao, setErroEdicao] = useState("");
-    const categoriasExibidas: typeof categorias = [
-        ...categorias,
-        ...categoriasExtras.map((nome, index) => ({ id: index + 6, nome })),
-    ];
+    const [erroBanco, setErroBanco] = useState("");
+    const [carregando, setCarregando] = useState(true);
+    const [salvando, setSalvando] = useState(false);
+    const iconesPorCategoria: Record<string, typeof faPizzaSlice> = {
+        pizzas: faPizzaSlice,
+        bebidas: faGlassWater,
+        sobremesas: faIceCream,
+        bordas: faCircleDot,
+        adicionais: faPlus,
+    }
+    const categoriasExibidas = [
+        { id: "Todos" as const, nome: "Todos" },
+        ...categoriasBanco.map((categoria) => ({
+            id: categoria.idCategoria,
+            nome: categoria.nome,
+            icone: iconesPorCategoria[categoria.nome.toLowerCase()] ?? faCircleDot,
+        })),
+    ]
 
     useEffect(() => {
         async function carregarCardapio() {
             try {
-                const response = await Axios.get<ItemCardapioJson[]>("/json/cardapio.json");
-                const itensSalvos = localStorage.getItem("bella-massa-cardapio");
-                const categoriasSalvas = localStorage.getItem("bella-massa-categorias");
-                let itensCarregados = response.data;
-
-                if (itensSalvos) {
-                    try {
-                        itensCarregados = JSON.parse(itensSalvos) as ItemCardapioJson[];
-                    } catch {
-                        localStorage.removeItem("bella-massa-cardapio");
-                    }
-                }
-
-                if (categoriasSalvas) {
-                    try {
-                        setCategoriasExtras(JSON.parse(categoriasSalvas) as string[]);
-                    } catch {
-                        localStorage.removeItem("bella-massa-categorias");
-                    }
-                }
-
+                const [itensCarregados, categoriasCarregadas] = await Promise.all([obterProdutos(), obterCategorias()]);
                 setItens(itensCarregados);
+                setCategoriasBanco(categoriasCarregadas);
                 setProdutoSelecionadoId(itensCarregados[0]?.idItem ?? null);
             } catch (erro) {
-                console.log(erro);
+                console.error("Não foi possível carregar o catálogo.", erro);
+                setErroBanco("Não foi possível carregar os dados do catálogo.");
+            } finally {
+                setCarregando(false);
             }
         }
 
@@ -113,30 +86,36 @@ export default function Cardapio() {
                 !termo ||
                 item.nome.toLowerCase().includes(termo) ||
                 item.descricao.toLowerCase().includes(termo) ||
-                obterNomeCategoria(item.idCategoria, categoriasExtras).toLowerCase().includes(termo);
+                item.categoria.toLowerCase().includes(termo);
 
             return correspondeCategoria && correspondeBusca;
         });
-    }, [itens, categoriaAtiva, busca, categoriasExtras]);
+    }, [itens, categoriaAtiva, busca]);
 
     const produtoSelecionado = itensFiltrados.find((item) => item.idItem === produtoSelecionadoId) ?? itensFiltrados[0] ?? null;
 
-    function atualizarProduto(idItem: number, alteracoes: Partial<ItemCardapioJson>) {
-        const itensAtualizados = itens.map((item) => item.idItem === idItem ? { ...item, ...alteracoes } : item);
-        setItens(itensAtualizados);
-        localStorage.setItem("bella-massa-cardapio", JSON.stringify(itensAtualizados));
+    async function atualizarProduto(idItem: number, alteracoes: Partial<ProdutoLocal>) {
+        setErroBanco("");
+        try {
+            await atualizarProdutoBanco(idItem, alteracoes);
+            setItens(await obterProdutos());
+        } catch (erro) {
+            console.error("Não foi possível salvar as alterações do produto.", erro);
+            setErroBanco("Não foi possível salvar as alterações. Tente novamente.");
+            throw erro;
+        }
     }
 
     function abrirModalEdicao() {
         if (!produtoSelecionado) return;
         setPrecoEditado(produtoSelecionado.preco.toFixed(2).replace(".", ","));
         setDescricaoEditada(produtoSelecionado.descricao);
-        setDestaqueEditado(produtoSelecionado.destaque ?? produtoSelecionado.idCategoria === 1);
+        setDestaqueEditado(produtoSelecionado.destaque ?? produtoSelecionado.tipo === "pizza");
         setErroEdicao("");
         setModalEdicaoAberto(true);
     }
 
-    function salvarEdicao(evento: FormEvent<HTMLFormElement>) {
+    async function salvarEdicao(evento: FormEvent<HTMLFormElement>) {
         evento.preventDefault();
         if (!produtoSelecionado) return;
 
@@ -146,33 +125,47 @@ export default function Cardapio() {
             return;
         }
 
-        atualizarProduto(produtoSelecionado.idItem, {
-            preco: novoPreco,
-            descricao: descricaoEditada.trim(),
-            destaque: destaqueEditado,
-        });
-        setModalEdicaoAberto(false);
+        setSalvando(true);
+        try {
+            await atualizarProduto(produtoSelecionado.idItem, {
+                preco: novoPreco,
+                descricao: descricaoEditada.trim(),
+                destaque: destaqueEditado,
+            });
+            setModalEdicaoAberto(false);
+        } catch {
+            setErroEdicao("Não foi possível salvar as alterações.");
+        } finally {
+            setSalvando(false);
+        }
     }
 
-    function alternarDisponibilidade() {
-        if (produtoSelecionado) atualizarProduto(produtoSelecionado.idItem, { ativo: produtoSelecionado.ativo === false });
+    async function alternarDisponibilidade() {
+        if (produtoSelecionado) {
+            await atualizarProduto(produtoSelecionado.idItem, { ativo: !produtoSelecionado.ativo });
+        }
     }
 
-    function adicionarCategoria() {
+    async function adicionarCategoria() {
         const nome = window.prompt("Nome da nova categoria")?.trim();
-        if (!nome || categoriasExtras.some((categoria) => categoria.toLowerCase() === nome.toLowerCase())) return;
+        if (!nome || categoriasBanco.some((categoria) => categoria.nome.toLowerCase() === nome.toLowerCase())) return;
 
-        const categoriasAtualizadas = [...categoriasExtras, nome];
-        setCategoriasExtras(categoriasAtualizadas);
-        localStorage.setItem("bella-massa-categorias", JSON.stringify(categoriasAtualizadas));
+        try {
+            const categoria = await criarCategoria(nome);
+            setCategoriasBanco((atuais) => [...atuais, categoria]);
+        } catch (erro) {
+            console.error("Não foi possível criar a categoria.", erro);
+            setErroBanco("Não foi possível criar a categoria.");
+        }
     }
 
     const produtosAtivos = itens.filter((item) => item.ativo !== false).length;
-    const destaques = itens.filter((item) => item.destaque ?? item.idCategoria === 1).length;
+    const destaques = itens.filter((item) => item.destaque ?? item.tipo === "pizza").length;
     const totalEstoque = itens.length;
 
     return (
         <div className="flex min-w-0 flex-col gap-4 xl:flex-row">
+            {erroBanco && <p role="alert" className="basis-full rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erroBanco}</p>}
             <section className="min-w-0 flex-1">
                 <div className="relative h-40 w-full overflow-hidden rounded-[18px] bg-[#12161c] shadow-[0_12px_30px_rgba(15,23,42,0.18)] sm:h-44">
                     <div
@@ -239,7 +232,9 @@ export default function Cardapio() {
                 </div>
 
                 <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                    {itensFiltrados.map((produto) => (
+                    {carregando ? (
+                        <p className="col-span-full p-8 text-center text-sm text-slate-500">Carregando catálogo...</p>
+                    ) : itensFiltrados.map((produto) => (
                         <button
                             type="button"
                             key={produto.idItem}
@@ -261,7 +256,7 @@ export default function Cardapio() {
                                     backgroundSize: "cover",
                                 }}
                             >
-                                {(produto.destaque ?? produto.idCategoria === 1) && (
+                                {(produto.destaque ?? produto.tipo === "pizza") && (
                                     <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#fff7d6] px-2 py-1 text-[10px] font-bold text-[#8a5a00]">
                                         <FontAwesomeIcon icon={faStar} className="text-[10px]" />
                                         Destaque
@@ -273,7 +268,7 @@ export default function Cardapio() {
                                 <div className="flex items-start justify-between gap-2">
                                     <div>
                                         <h2 className="text-lg font-bold text-[#111827]">{produto.nome}</h2>
-                                        <p className="mt-1 text-xs text-slate-500">{obterNomeCategoria(produto.idCategoria, categoriasExtras)}</p>
+                                        <p className="mt-1 text-xs text-slate-500">{produto.categoria}</p>
                                     </div>
                                     <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${produto.ativo === false ? "bg-slate-100 text-slate-600" : "bg-emerald-100 text-emerald-700"}`}>
                                         {produto.ativo === false ? "Inativo" : "Ativo"}
@@ -333,7 +328,7 @@ export default function Cardapio() {
                             <div className="mt-4 space-y-2 text-sm text-slate-600">
                                 <div className="flex items-center justify-between">
                                     <span>Categoria</span>
-                                    <span className="font-bold text-slate-800">{obterNomeCategoria(produtoSelecionado.idCategoria, categoriasExtras)}</span>
+                                    <span className="font-bold text-slate-800">{produtoSelecionado.categoria}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span>Preço</span>
@@ -347,7 +342,7 @@ export default function Cardapio() {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span>Destaque</span>
-                                    <span className="font-bold text-slate-800">{produtoSelecionado.destaque ?? produtoSelecionado.idCategoria === 1 ? "Sim" : "Não"}</span>
+                                    <span className="font-bold text-slate-800">{produtoSelecionado.destaque ? "Sim" : "Não"}</span>
                                 </div>
                             </div>
                         </div>
@@ -372,7 +367,7 @@ export default function Cardapio() {
                                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#dbe2eb] bg-white px-3 py-3 text-sm font-bold text-[#1d2733]"
                             >
                                 <FontAwesomeIcon icon={faPowerOff} className="text-sm" />
-                                {produtoSelecionado.ativo === false ? "Ativar" : "Inativar"}
+                                {produtoSelecionado.ativo ? "Inativar" : "Ativar"}
                             </button>
                         </div>
                     </>
@@ -505,9 +500,10 @@ export default function Cardapio() {
                                 </button>
                                 <button
                                     type="submit"
+                                    disabled={salvando}
                                     className="rounded-lg bg-[#d92626] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#b81f26]"
                                 >
-                                    Salvar alterações
+                                    {salvando ? "Salvando..." : "Salvar alterações"}
                                 </button>
                             </div>
                         </form>

@@ -1,12 +1,15 @@
+"use client"
+
 import { useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faArrowLeft, faCalendarAlt, faClock } from "@fortawesome/free-solid-svg-icons"
 import BuscaClientePedido from "../Components/BuscaClientePedido"
-import ModalMontagemPizza from "../Components/ModalMontagemPizza"
 import CarrinhoPedido from "../Components/CarrinhoPedido"
 import CheckoutPedido from "../Components/CheckoutPedido"
 import CatalogoProdutos from "../Components/CatalogoProdutos"
-import { obterPedidos, salvarPedidos, type PedidoLocal } from "../lib/pedidos"
+import ModalNovoCliente from "../Components/ModalNovoCliente"
+import { criarPedido } from "../lib/pedidos"
+import { type ClienteLocal, type ProdutoLocal } from "../lib/database"
 
 interface ItemCarrinho {
     id: number | string
@@ -14,88 +17,63 @@ interface ItemCarrinho {
     detalhes?: string
     quantidade: number
     precoUnitario: number
+    idProduto: number
 }
 
-    interface ProdutoCardapioPedido {
-        idItem: number
-        idCategoria: number
-        nome: string
-        descricao: string
-        preco: number
-        imagem: string
-    }
+interface PedidoProps {
+    onVoltarPedidos: () => void
+}
 
-    interface TamanhoPizzaPedido {
-        idTamanho: number
-        nome: string
-        cm: number
-        precoBase: number
-    }
-
-    interface PedidoProps {
-        onVoltarPedidos: () => void
-    }
-
-        export default function Pedido({ onVoltarPedidos }: PedidoProps) {
-    // Estados principais da página
-        const [clienteId, setClienteId] = useState<number>(0)
-        const [itensCarrinho, setItensCarrinho] = useState<ItemCarrinho[]>([])
-        const [desconto] = useState(0)
-    const [taxaEntrega] = useState(7.00)
-        const [tipoEntrega, setTipoEntrega] = useState("")
+export default function Pedido({ onVoltarPedidos }: PedidoProps) {
+    const [clienteId, setClienteId] = useState<number>(0)
+    const [clienteEndereco, setClienteEndereco] = useState("")
+    const [itensCarrinho, setItensCarrinho] = useState<ItemCarrinho[]>([])
+    const [taxaEntrega] = useState(7)
+    const [tipoEntrega, setTipoEntrega] = useState("")
     const [mensagemPedido, setMensagemPedido] = useState("")
+    const [modalNovoClienteAberto, setModalNovoClienteAberto] = useState(false)
+    const [clientesAtualizacao, setClientesAtualizacao] = useState(0)
 
-    // Funções do Carrinho
-        function adicionarItemGenerico(item: ProdutoCardapioPedido) {
-        const itemExistente = itensCarrinho.find(i => i.id === item.idItem)
+    function adicionarItemGenerico(item: ProdutoLocal) {
+        const itemExistente = itensCarrinho.find((carrinho) => carrinho.id === item.idItem && carrinho.idProduto === item.idItem)
         if (itemExistente) {
-            setItensCarrinho(itensCarrinho.map(i => 
-                i.id === item.idItem ? { ...i, quantidade: i.quantidade + 1 } : i
+            setItensCarrinho(itensCarrinho.map((carrinho) =>
+                carrinho.id === item.idItem ? { ...carrinho, quantidade: carrinho.quantidade + 1 } : carrinho,
             ))
         } else {
             setItensCarrinho([
                 ...itensCarrinho,
                 {
                     id: item.idItem,
+                    idProduto: item.idItem,
                     nome: item.nome,
                     detalhes: item.descricao,
                     quantidade: 1,
-                    precoUnitario: item.preco
-                }
+                    precoUnitario: item.preco,
+                },
             ])
         }
     }
 
-    function adicionarPizzaPersonalizada(dados: { tamanho: TamanhoPizzaPedido; sabores: string[]; borda: string; adicionais: string[]; precoTotal: number }) {
-            const novoItem: ItemCarrinho = {
-            id: Date.now(),
-            nome: `Pizza ${dados.tamanho.nome}`,
-            detalhes: `${dados.sabores.join(" + ")}\nBorda: ${dados.borda}\nAdicionais: ${dados.adicionais.join(", ") || "Nenhum"}`,
-            quantidade: 1,
-            precoUnitario: dados.precoTotal
-        }
-        setItensCarrinho([...itensCarrinho, novoItem])
-    }
-
     function alterarQuantidade(id: number | string, delta: number) {
-        setItensCarrinho(itensCarrinho.map(item => {
-            if (item.id === id) {
-                const novaQtd = item.quantidade + delta
-                return novaQtd > 0 ? { ...item, quantidade: novaQtd } : null
-            }
-            return item
-        }).filter(Boolean) as ItemCarrinho[])
+        setItensCarrinho((atuais) => atuais
+            .map((item) => {
+                if (item.id !== id) return item
+                const novaQuantidade = item.quantidade + delta
+                return novaQuantidade > 0 ? { ...item, quantidade: novaQuantidade } : null
+            })
+            .filter((item): item is ItemCarrinho => item !== null))
     }
 
     function removerItem(id: number | string) {
-        setItensCarrinho(itensCarrinho.filter(item => item.id !== id))
+        setItensCarrinho((atuais) => atuais.filter((item) => item.id !== id))
     }
 
     function limparCarrinho() {
         setItensCarrinho([])
     }
 
-    const subtotal = itensCarrinho.reduce((acc, item) => acc + (item.precoUnitario * item.quantidade), 0)
+    const subtotal = itensCarrinho.reduce((total, item) => total + item.precoUnitario * item.quantidade, 0)
 
     async function confirmarPedido(dadosCheckout: { tipoEntrega: string; formaPagamento: string }) {
         setMensagemPedido("")
@@ -111,49 +89,40 @@ interface ItemCarrinho {
             setMensagemPedido("Escolha entrega ou retirada e uma forma de pagamento.")
             return
         }
+        if (dadosCheckout.tipoEntrega === "Entrega" && !clienteEndereco.trim()) {
+            setMensagemPedido("Selecione um cliente com endereço de entrega cadastrado.")
+            return
+        }
 
         try {
-            const pedidosExistentes = await obterPedidos()
-            const valorEntrega = dadosCheckout.tipoEntrega === "Entrega" ? taxaEntrega : 0
-            const novoPedido: PedidoLocal = {
-                idPedido: Math.max(0, ...pedidosExistentes.map((pedido) => pedido.idPedido)) + 1,
+            const idPedido = await criarPedido({
                 idCliente: clienteId,
-                dataPedido: new Date().toISOString(),
-                itens: itensCarrinho.map((item) => ({
-                    tipo: item.nome.startsWith("Pizza") ? "Pizza" : "Produto",
-                    nome: item.nome,
-                    detalhes: item.detalhes,
-                    quantidade: item.quantidade,
-                    precoTotalItem: item.precoUnitario * item.quantidade,
-                })),
-                subtotal,
-                taxaEntrega: valorEntrega,
-                desconto,
-                total: Math.max(0, subtotal + valorEntrega - desconto),
                 tipoEntrega: dadosCheckout.tipoEntrega,
-                formaPagamento: dadosCheckout.formaPagamento === "Cartão" ? "Cartão de crédito" : dadosCheckout.formaPagamento,
-                statusPagamento: "Pendente",
-                status: "Em andamento",
-            }
-
-            salvarPedidos([novoPedido, ...pedidosExistentes])
+                formaPagamento: dadosCheckout.formaPagamento,
+                taxaEntrega: dadosCheckout.tipoEntrega === "Entrega" ? taxaEntrega : 0,
+                itens: itensCarrinho.map((item) => ({
+                    idProduto: item.idProduto,
+                    quantidade: item.quantidade,
+                    detalhes: item.detalhes,
+                })),
+            })
             setItensCarrinho([])
-            setMensagemPedido(`Pedido #${novoPedido.idPedido} confirmado e salvo.`)
-        } catch {
-            setMensagemPedido("Não foi possível salvar o pedido. Tente novamente.")
+            setMensagemPedido(`Pedido #${idPedido} confirmado e salvo.`)
+        } catch (erro) {
+            console.error("Não foi possível registrar o pedido.", erro)
+            setMensagemPedido(erro instanceof Error ? erro.message : "Não foi possível salvar o pedido. Tente novamente.")
         }
     }
 
     return (
         <div className="flex w-full min-w-0 flex-col gap-4 pb-24 font-sans sm:gap-6 sm:pb-10">
-            {/* Cabeçalho da Página com Data e Hora */}
             <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                     <button
                         type="button"
                         onClick={onVoltarPedidos}
                         aria-label="Voltar para pedidos"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50"
                     >
                         <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
                     </button>
@@ -165,38 +134,31 @@ interface ItemCarrinho {
 
                 <div className="flex flex-wrap items-center gap-3 self-start rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600 sm:gap-6 sm:px-4 md:self-auto">
                     <div className="flex items-center gap-2">
-                        <FontAwesomeIcon icon={faCalendarAlt} className="text-slate-400 text-xs" />
-                        <span className="font-medium">15 de Setembro de 2026</span>
+                        <FontAwesomeIcon icon={faCalendarAlt} className="text-xs text-slate-400" />
+                        <span className="font-medium">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date())}</span>
                     </div>
-                    <div className="h-4 w-px bg-slate-200"></div>
+                    <div className="h-4 w-px bg-slate-200" />
                     <div className="flex items-center gap-2">
-                        <FontAwesomeIcon icon={faClock} className="text-slate-400 text-xs" />
-                        <span className="font-medium">14:32</span>
+                        <FontAwesomeIcon icon={faClock} className="text-xs text-slate-400" />
+                        <span className="font-medium">{new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date())}</span>
                     </div>
                 </div>
             </div>
 
-            {/* Layout em 2 Colunas Principais (Esquerda: Cliente + Catálogo/Montagem | Direita: Carrinho + Checkout) */}
             <div className="grid min-w-0 grid-cols-1 items-start gap-4 sm:gap-6 lg:grid-cols-12">
-                
-                {/* Coluna Esquerda (Span 8) */}
                 <div className="flex min-w-0 flex-col gap-4 sm:gap-6 lg:col-span-8">
                     <BuscaClientePedido
                         clienteSelecionadoId={clienteId}
-                        onSelecionarCliente={(id) => setClienteId(id)}
-                        onNovoCliente={() => alert("Abrir modal de novo cliente")}
+                        atualizarLista={clientesAtualizacao}
+                        onSelecionarCliente={(cliente: ClienteLocal) => {
+                            setClienteId(cliente.idCliente)
+                            setClienteEndereco(cliente.endereco)
+                        }}
+                        onNovoCliente={() => setModalNovoClienteAberto(true)}
                     />
-
-                    <CatalogoProdutos
-                        onAdicionarItem={adicionarItemGenerico}
-                    />
-
-                    <ModalMontagemPizza
-                        onAdicionarPizzaPersonalizada={adicionarPizzaPersonalizada}
-                    />
+                    <CatalogoProdutos onAdicionarItem={adicionarItemGenerico} />
                 </div>
 
-                {/* Coluna Direita (Span 4) */}
                 <div className="flex min-w-0 flex-col gap-4 sm:gap-6 lg:sticky lg:top-4 lg:col-span-4">
                     <CarrinhoPedido
                         itens={itensCarrinho}
@@ -205,21 +167,26 @@ interface ItemCarrinho {
                         onLimparCarrinho={limparCarrinho}
                         subtotal={subtotal}
                         taxaEntrega={tipoEntrega === "Entrega" && itensCarrinho.length > 0 ? taxaEntrega : 0}
-                        desconto={desconto}
                     />
-
-                    <CheckoutPedido
-                        onConfirmarPedido={confirmarPedido}
-                        onTipoEntregaChange={setTipoEntrega}
-                    />
+                    <CheckoutPedido onConfirmarPedido={confirmarPedido} onTipoEntregaChange={setTipoEntrega} />
                     {mensagemPedido && (
                         <p role="status" className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
                             {mensagemPedido}
                         </p>
                     )}
                 </div>
-
             </div>
+
+            <ModalNovoCliente
+                aberto={modalNovoClienteAberto}
+                onFechar={() => setModalNovoClienteAberto(false)}
+                onCriado={(idNovoCliente, novoEndereco) => {
+                    setClienteId(idNovoCliente)
+                    setClienteEndereco(novoEndereco)
+                    setClientesAtualizacao((atualizacao) => atualizacao + 1)
+                    setModalNovoClienteAberto(false)
+                }}
+            />
         </div>
     )
 }

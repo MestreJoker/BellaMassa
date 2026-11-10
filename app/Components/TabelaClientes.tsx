@@ -3,25 +3,12 @@
 import { faChevronLeft, faChevronRight, faEllipsisH, faPencil, faSearch, faUsers } from "@fortawesome/free-solid-svg-icons"
 import { faWhatsapp } from "@fortawesome/free-brands-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import Axios from "axios"
 import { useEffect, useState } from "react"
-
-interface ClienteProps {
-    idCliente: number
-    nome: string
-    telefone: string
-    endereco: string
-    idBairro: number
-    status: string
-}
-
-interface BairroProps {
-    idBairro: number
-    nome: string
-}
+import { obterClientes, type ClienteLocal } from "../lib/database"
 
 interface TabelaClientesProps {
     informarClique: (idCliente: number) => void
+    atualizarLista: number
 }
 
 function obterIniciais(nome: string) {
@@ -46,8 +33,7 @@ function obterCorAvatar(id: number) {
 }
 
 export default function TabelaClientes(props: TabelaClientesProps) {
-    const [clientes, setClientes] = useState<ClienteProps[]>([])
-    const [bairros, setBairros] = useState<BairroProps[]>([])
+    const [clientes, setClientes] = useState<ClienteLocal[]>([])
     const [carregando, setCarregando] = useState(true)
     const [termoBusca, setTermoBusca] = useState("")
     const [filtroStatus, setFiltroStatus] = useState("Todos") // "Todos", "Ativo", "Inativo"
@@ -58,29 +44,19 @@ export default function TabelaClientes(props: TabelaClientesProps) {
     useEffect(() => {
         async function resgatarDados() {
             try {
-                const [responseClientes, responseBairros] = await Promise.all([
-                    Axios.get<ClienteProps[]>("/json/clientes.json"),
-                    Axios.get<BairroProps[]>("/json/bairros.json")
-                ])
-                setClientes(responseClientes.data)
-                setBairros(responseBairros.data)
+                setClientes(await obterClientes())
+            } catch (erro: unknown) {
+                console.error("Não foi possível carregar a lista de clientes.", erro)
             } finally {
                 setCarregando(false)
             }
         }
         resgatarDados()
-    }, [])
+    }, [props.atualizarLista])
 
-    // Função para buscar o nome do bairro pelo idBairro
-    function obterNomeBairro(idBairro: number) {
-        const bairroEncontrado = bairros.find((b) => b.idBairro === idBairro)
-        return bairroEncontrado ? bairroEncontrado.nome : ""
-    }
-
-    // Lógica de filtragem considerando o nome real do bairro resolvido
     const clientesFiltrados = clientes.filter((item) => {
         const termo = termoBusca.toLowerCase()
-        const nomeBairro = obterNomeBairro(item.idBairro).toLowerCase()
+        const nomeBairro = item.bairro.toLowerCase()
 
         const correspondeBusca =
             String(item.nome || "").toLowerCase().includes(termo) ||
@@ -207,7 +183,7 @@ export default function TabelaClientes(props: TabelaClientesProps) {
                                     </td>
                                     <td className="px-4 py-2.5 sm:px-5 sm:py-3">{item.endereco}</td>
                                     {/* Exibindo o nome do bairro resolvido pelo ID */}
-                                    <td className="px-4 py-2.5 sm:px-5 sm:py-3">{obterNomeBairro(item.idBairro)}</td>
+                                    <td className="px-4 py-2.5 sm:px-5 sm:py-3">{item.bairro}</td>
                                     <td className="whitespace-nowrap px-4 py-2.5 sm:px-5 sm:py-3">
                                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
                                             item.status === "Ativo"

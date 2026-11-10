@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowUp,
@@ -15,20 +14,16 @@ import {
     faReceipt,
     faWallet,
 } from "@fortawesome/free-solid-svg-icons";
-import { obterPedidos, salvarPedidos, type PedidoLocal } from "../lib/pedidos";
+import { obterPedidos, type PedidoLocal } from "../lib/pedidos";
 import { exportarCsv } from "../lib/exportarCsv";
-
-interface ClienteJson {
-    idCliente: number;
-    nome: string;
-}
+import { marcarPedidoPago, obterClientes, type ClienteLocal } from "../lib/database";
 
 const formatCurrency = (valor: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
 
 export default function Pagamentos() {
     const [pedidos, setPedidos] = useState<PedidoLocal[]>([]);
-    const [clientes, setClientes] = useState<ClienteJson[]>([]);
+    const [clientes, setClientes] = useState<ClienteLocal[]>([]);
     const [pesquisa, setPesquisa] = useState("");
     const [statusFiltro, setStatusFiltro] = useState("Todos");
     const [periodoFiltro, setPeriodoFiltro] = useState("todos");
@@ -38,10 +33,10 @@ export default function Pagamentos() {
             try {
                 const [pedidosCarregados, respostaClientes] = await Promise.all([
                     obterPedidos(),
-                    Axios.get<ClienteJson[]>("/json/clientes.json"),
+                    obterClientes(),
                 ]);
                 setPedidos(pedidosCarregados);
-                setClientes(respostaClientes.data);
+                setClientes(respostaClientes);
             } catch (erro) {
                 console.error("Não foi possível carregar os pagamentos.", erro);
             }
@@ -51,17 +46,18 @@ export default function Pagamentos() {
     }, []);
 
     function estaPago(pedido: PedidoLocal) {
-        return pedido.statusPagamento
-            ? pedido.statusPagamento === "Pago"
-            : /pago|entregue|retirado|finalizado/i.test(pedido.status);
+        return pedido.statusPagamento === "Pago";
     }
 
-    function marcarComoPago(idPedido: number) {
-        const pedidosAtualizados = pedidos.map((pedido) => pedido.idPedido === idPedido
-            ? { ...pedido, statusPagamento: "Pago" }
-            : pedido);
-        setPedidos(pedidosAtualizados);
-        salvarPedidos(pedidosAtualizados);
+    async function marcarComoPago(idPedido: number) {
+        try {
+            await marcarPedidoPago(idPedido);
+            setPedidos((atuais) => atuais.map((pedido) => pedido.idPedido === idPedido
+                ? { ...pedido, statusPagamento: "Pago" }
+                : pedido));
+        } catch (erro) {
+            console.error("Não foi possível registrar o pagamento.", erro);
+        }
     }
 
     const pedidosFiltradosPorPeriodo = useMemo(() => {
@@ -92,9 +88,9 @@ export default function Pagamentos() {
                 idPedido: pedido.idPedido,
                 cliente: clienteNome,
                 valor: formatCurrency(pedido.total),
-                forma: pedido.formaPagamento ?? "Pix",
+                forma: pedido.formaPagamento,
                 formaIcone:
-                    pedido.formaPagamento === "Cartão de crédito"
+                    pedido.formaPagamento === "Cartão de crédito" || pedido.formaPagamento === "Cartão de débito"
                         ? faCreditCard
                         : pedido.formaPagamento === "Dinheiro"
                         ? faDollarSign

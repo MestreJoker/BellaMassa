@@ -1,15 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import Axios from "axios"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg-icons"
 import { obterPedidos, type PedidoLocal } from "../lib/pedidos"
-
-interface ClienteJson {
-    idCliente: number
-    nome: string
-}
+import { obterClientes, type ClienteLocal } from "../lib/database"
 
 interface PedidosProps {
     onNovoPedido: () => void
@@ -20,7 +15,7 @@ const formatarMoeda = (valor: number) =>
 
 export default function Pedidos({ onNovoPedido }: PedidosProps) {
     const [pedidos, setPedidos] = useState<PedidoLocal[]>([])
-    const [clientes, setClientes] = useState<ClienteJson[]>([])
+    const [clientes, setClientes] = useState<ClienteLocal[]>([])
     const [busca, setBusca] = useState("")
     const [statusFiltro, setStatusFiltro] = useState("Todos")
     const [carregando, setCarregando] = useState(true)
@@ -30,10 +25,10 @@ export default function Pedidos({ onNovoPedido }: PedidosProps) {
             try {
                 const [pedidosCarregados, respostaClientes] = await Promise.all([
                     obterPedidos(),
-                    Axios.get<ClienteJson[]>("/json/clientes.json"),
+                    obterClientes(),
                 ])
                 setPedidos(pedidosCarregados)
-                setClientes(respostaClientes.data)
+                setClientes(respostaClientes)
             } catch (erro) {
                 console.error("Não foi possível carregar os pedidos.", erro)
             } finally {

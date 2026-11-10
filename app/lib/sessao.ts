@@ -1,27 +1,39 @@
+import { supabase } from "../../lib/supabase"
+
 export interface UsuarioSessao {
-    id: number
+    id: string
     nome: string
     email: string
+    isAdmin: boolean
 }
 
-const CHAVE_SESSAO = "bella-massa-usuario"
+export async function obterUsuarioSessao(): Promise<UsuarioSessao | null> {
+    const { data: sessaoData, error: erroSessao } = await supabase.auth.getSession()
+    if (erroSessao) throw erroSessao
+    if (!sessaoData.session) return null
 
-export function obterUsuarioSessao(): UsuarioSessao | null {
-    const usuarioSalvo = sessionStorage.getItem(CHAVE_SESSAO)
-    if (!usuarioSalvo) return null
+    const { data: usuarioData, error: erroUsuario } = await supabase.auth.getUser()
+    if (erroUsuario) throw erroUsuario
+    if (!usuarioData.user) return null
 
-    try {
-        return JSON.parse(usuarioSalvo) as UsuarioSessao
-    } catch {
-        sessionStorage.removeItem(CHAVE_SESSAO)
-        return null
+    const { data: perfil, error } = await supabase
+        .from("perfis")
+        .select("nome, is_admin")
+        .eq("auth_user_id", usuarioData.user.id)
+        .maybeSingle()
+
+    if (error) throw error
+    if (!perfil) return null
+
+    return {
+        id: usuarioData.user.id,
+        nome: perfil.nome,
+        email: usuarioData.user.email ?? "",
+        isAdmin: perfil.is_admin,
     }
 }
 
-export function salvarUsuarioSessao(usuario: UsuarioSessao) {
-    sessionStorage.setItem(CHAVE_SESSAO, JSON.stringify(usuario))
-}
-
-export function encerrarSessao() {
-    sessionStorage.removeItem(CHAVE_SESSAO)
+export async function encerrarSessao(): Promise<void> {
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
 }

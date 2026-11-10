@@ -1,21 +1,16 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import Axios from "axios"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faMagnifyingGlass, faStore, faTruck } from "@fortawesome/free-solid-svg-icons"
-import { obterPedidos, salvarPedidos, type PedidoLocal } from "../lib/pedidos"
+import { obterPedidos, type PedidoLocal } from "../lib/pedidos"
+import { atualizarStatusPedido, obterClientes, type ClienteLocal, type StatusPedidoLocal } from "../lib/database"
 
-interface ClienteJson {
-    idCliente: number
-    nome: string
-}
-
-const statusDisponiveis = ["Em andamento", "Em preparo", "Pronto", "Em entrega", "Entregue", "Cancelado"]
+const statusDisponiveis: StatusPedidoLocal[] = ["Em andamento", "Em preparo", "Pronto", "Em entrega", "Entregue", "Retirado", "Cancelado"]
 
 export default function Entregas() {
     const [pedidos, setPedidos] = useState<PedidoLocal[]>([])
-    const [clientes, setClientes] = useState<ClienteJson[]>([])
+    const [clientes, setClientes] = useState<ClienteLocal[]>([])
     const [busca, setBusca] = useState("")
     const [tipoFiltro, setTipoFiltro] = useState("Todos")
     const [carregando, setCarregando] = useState(true)
@@ -25,10 +20,12 @@ export default function Entregas() {
             try {
                 const [pedidosCarregados, respostaClientes] = await Promise.all([
                     obterPedidos(),
-                    Axios.get<ClienteJson[]>("/json/clientes.json"),
+                    obterClientes(),
                 ])
                 setPedidos(pedidosCarregados)
-                setClientes(respostaClientes.data)
+                setClientes(respostaClientes)
+            } catch (erro) {
+                console.error("Não foi possível carregar entregas e pedidos.", erro)
             } finally {
                 setCarregando(false)
             }
@@ -46,10 +43,13 @@ export default function Entregas() {
         return atendeBusca && atendeTipo
     })
 
-    function atualizarStatus(idPedido: number, status: string) {
-        const pedidosAtualizados = pedidos.map((pedido) => pedido.idPedido === idPedido ? { ...pedido, status } : pedido)
-        setPedidos(pedidosAtualizados)
-        salvarPedidos(pedidosAtualizados)
+    async function atualizarStatus(idPedido: number, status: StatusPedidoLocal) {
+        try {
+            await atualizarStatusPedido(idPedido, status)
+            setPedidos((atuais) => atuais.map((pedido) => pedido.idPedido === idPedido ? { ...pedido, status } : pedido))
+        } catch (erro) {
+            console.error("Não foi possível atualizar o status do pedido.", erro)
+        }
     }
 
     const formatarMoeda = (valor: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor)
@@ -111,13 +111,12 @@ export default function Entregas() {
                                     <div className="min-w-0">
                                         <p className="font-bold text-slate-900">Pedido #{pedido.idPedido} · {clientesMap.get(pedido.idCliente) ?? `Cliente ${pedido.idCliente}`}</p>
                                         <p className="mt-1 text-xs text-slate-500">{pedido.tipoEntrega} · {new Date(pedido.dataPedido).toLocaleString("pt-BR")} · {formatarMoeda(pedido.total)}</p>
-                                        <p className="mt-1 truncate text-xs text-slate-500">{pedido.itens.map((item) => `${item.quantidade ?? 1}x ${item.nome ?? item.tipo ?? "Item"}`).join(", ")}</p>
+                                        <p className="mt-1 truncate text-xs text-slate-500">{pedido.itens.map((item) => `${item.quantidade ?? 1}x ${item.nome ?? "Item"}`).join(", ")}</p>
                                     </div>
                                 </div>
                                 <label className="flex items-center gap-2 text-sm text-slate-600">
                                     <span>Status</span>
-                                    <select value={pedido.status} onChange={(evento) => atualizarStatus(pedido.idPedido, evento.target.value)} className="min-w-36 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-800">
-                                        {!statusDisponiveis.includes(pedido.status) && <option>{pedido.status}</option>}
+                                    <select value={pedido.status} onChange={(evento) => atualizarStatus(pedido.idPedido, evento.target.value as StatusPedidoLocal)} className="min-w-36 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-800">
                                         {statusDisponiveis.map((status) => <option key={status}>{status}</option>)}
                                     </select>
                                 </label>

@@ -4,18 +4,10 @@ import Image from "next/image";
 import LayoutLoginCadastro from "./Widgets/LayoutLoginCadastro";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRightToBracket, faCircleExclamation, faLock, faShieldHalved, faEnvelope } from "@fortawesome/free-solid-svg-icons";
-import Axios from "axios";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { obterUsuarioSessao, salvarUsuarioSessao } from "./lib/sessao";
-
-interface UsuarioJson {
-    id: number
-    nome: string
-    email: string
-    senha: string
-}
+import { obterUsuarioSessao } from "./lib/sessao";
+import { supabase } from "../lib/supabase";
 
 export default function Login(){
     const router = useRouter()
@@ -25,7 +17,11 @@ export default function Login(){
     const [carregando, setCarregando] = useState(false)
 
     useEffect(() => {
-        if (obterUsuarioSessao()) router.replace("/home")
+        obterUsuarioSessao()
+            .then((usuario) => {
+                if (usuario) router.replace("/home")
+            })
+            .catch((erro: unknown) => console.error("Não foi possível verificar a sessão.", erro))
     }, [router])
 
     async function entrar(evento: FormEvent<HTMLFormElement>) {
@@ -34,20 +30,28 @@ export default function Login(){
         setCarregando(true)
 
         try {
-            const resposta = await Axios.get<UsuarioJson[]>("/json/usuarios.json")
-            const usuario = resposta.data.find((item) =>
-                item.email.toLowerCase() === email.trim().toLowerCase() && item.senha === senha
-            )
+            const { error: erroLogin } = await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password: senha,
+            })
 
-            if (!usuario) {
+            if (erroLogin) {
                 setErro("E-mail ou senha inválidos.")
                 return
             }
 
-            salvarUsuarioSessao({ id: usuario.id, nome: usuario.nome, email: usuario.email })
+            const usuario = await obterUsuarioSessao()
+            if (!usuario) {
+                const { error: erroSaida } = await supabase.auth.signOut()
+                if (erroSaida) throw erroSaida
+                setErro("Esta conta ainda não tem acesso ao sistema. Solicite a liberação a um administrador.")
+                return
+            }
+
             router.push("/home")
-        } catch {
-            setErro("Não foi possível carregar os usuários. Tente novamente.")
+        } catch (erro) {
+            console.error("Não foi possível autenticar no Supabase.", erro)
+            setErro("Não foi possível conectar ao sistema. Tente novamente.")
         } finally {
             setCarregando(false)
         }
@@ -120,7 +124,7 @@ export default function Login(){
                 </form>
 
                 <p className="mt-3 text-center text-sm text-gray-600">
-                    Não possui conta? <Link href="/cadastro" className="font-semibold text-(--colorMain) hover:underline">Cadastre-se</Link>
+                    Acesso restrito à equipe. Solicite suas credenciais a um administrador.
                 </p>
 
                 <hr className="mt-8 text-gray-300 sm:mt-12"/>

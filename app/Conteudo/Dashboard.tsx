@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react";
-import Axios from "axios";
 import ConteudoCardsDashboard from "../Widgets/ConteudoCardsDashboard";
 import GraficoMovimentoPedidos from "../Components/GraficoMovimentoPedidos";
 import GraficoPedidosPorTipo from "../Components/GraficoPedidosPorTipo";
@@ -9,19 +8,14 @@ import CardReceitaDia from "../Components/CardReceitaDia";
 import TabelaPedidosRecentes from "../Components/TabelaPedidosRecentes";
 import { obterPedidos, type PedidoLocal } from "../lib/pedidos";
 import { obterUsuarioSessao } from "../lib/sessao";
-
-interface ClienteJson {
-    idCliente: number
-    nome: string
-    status: string
-}
+import { obterClientes, type ClienteLocal } from "../lib/database";
 
 interface DashboardProps {
     onVerTodosPedidos: () => void
 }
 
 export default function Dashboard({ onVerTodosPedidos }: DashboardProps) {
-    const [clientes, setClientes] = useState<ClienteJson[]>([])
+    const [clientes, setClientes] = useState<ClienteLocal[]>([])
     const [pedidos, setPedidos] = useState<PedidoLocal[]>([])
     const [carregando, setCarregando] = useState(true)
     const [nomeUsuario, setNomeUsuario] = useState("")
@@ -29,13 +23,13 @@ export default function Dashboard({ onVerTodosPedidos }: DashboardProps) {
     useEffect(() => {
         async function carregarDados() {
             try {
-                const [clientesResponse, pedidosResponse] = await Promise.all([
-                    Axios.get<ClienteJson[]>("/json/clientes.json"),
+                const [clientesResponse, pedidosResponse, usuario] = await Promise.all([
+                    obterClientes(),
                     obterPedidos(),
+                    obterUsuarioSessao(),
                 ])
 
-                const usuario = obterUsuarioSessao()
-                setClientes(clientesResponse.data)
+                setClientes(clientesResponse)
                 setPedidos(pedidosResponse)
                 setNomeUsuario(usuario?.nome.split(" ")[0] ?? "")
             } catch (erro) {

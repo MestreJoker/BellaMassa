@@ -1,6 +1,5 @@
-import { useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faShoppingCart, faTrash, faPlus, faMinus, faTag } from "@fortawesome/free-solid-svg-icons"
+import { faShoppingCart, faTrash, faPlus, faMinus } from "@fortawesome/free-solid-svg-icons"
 
 interface ItemCarrinho {
     id: number | string
@@ -17,7 +16,6 @@ interface CarrinhoProps {
     onLimparCarrinho: () => void
     subtotal: number
     taxaEntrega: number
-    desconto: number
 }
 
 export default function CarrinhoPedido({
@@ -27,10 +25,8 @@ export default function CarrinhoPedido({
     onLimparCarrinho,
     subtotal,
     taxaEntrega,
-    desconto
 }: CarrinhoProps) {
-    const [codigoCupom, setCodigoCupom] = useState("")
-    const totalFinal = subtotal + taxaEntrega - desconto
+    const totalFinal = subtotal + taxaEntrega
 
     return (
         <div className="flex w-full min-w-0 flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm font-sans sm:gap-5 sm:p-6">
@@ -101,28 +97,6 @@ export default function CarrinhoPedido({
                 )}
             </div>
 
-            {/* Input de Código de Desconto */}
-            <div className="flex min-w-0 items-center gap-2 pt-2">
-                <div className="relative flex-1">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                        <FontAwesomeIcon icon={faTag} className="text-xs" />
-                    </span>
-                    <input
-                        type="text"
-                        placeholder="Código de desconto"
-                        value={codigoCupom}
-                        onChange={(e) => setCodigoCupom(e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-slate-400"
-                    />
-                </div>
-                <button
-                    type="button"
-                    className="rounded-lg bg-blue-50 text-blue-600 font-semibold px-4 py-2 text-xs hover:bg-blue-100 transition-colors"
-                >
-                    Aplicar
-                </button>
-            </div>
-
             {/* Resumo de Valores */}
             <div className="flex flex-col gap-2 pt-3 border-t border-slate-100 text-xs text-slate-600">
                 <div className="flex justify-between">
@@ -132,10 +106,6 @@ export default function CarrinhoPedido({
                 <div className="flex justify-between">
                     <span>Taxa de entrega</span>
                     <span className="font-semibold text-slate-800">R$ {taxaEntrega.toFixed(2).replace(".", ",")}</span>
-                </div>
-                <div className="flex justify-between text-rose-600">
-                    <span>Desconto</span>
-                    <span className="font-semibold">- R$ {desconto.toFixed(2).replace(".", ",")}</span>
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-sm font-black text-slate-900">
                     <span>Total</span>

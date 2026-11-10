@@ -2,26 +2,13 @@ import { useState, useEffect, useRef } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faSearch, faUserPlus, faUser, faLocationDot, faChevronDown, faCheck } from "@fortawesome/free-solid-svg-icons"
 import { faWhatsapp } from "@fortawesome/free-brands-svg-icons"
-import Axios from "axios"
-
-interface ClienteProps {
-    idCliente: number
-    nome: string
-    telefone: string
-    endereco: string
-    idBairro: number
-    status: string
-}
-
-interface BairroProps {
-    idBairro: number
-    nome: string
-}
+import { obterClientes, type ClienteLocal } from "../lib/database"
 
 interface BuscaClienteProps {
     clienteSelecionadoId: number
-    onSelecionarCliente: (idCliente: number) => void
+    onSelecionarCliente: (cliente: ClienteLocal) => void
     onNovoCliente?: () => void
+    atualizarLista?: number
 }
 
 function obterIniciais(nome: string) {
@@ -44,9 +31,8 @@ function obterCorAvatar(id: number) {
     return coresAvatares[id % coresAvatares.length]
 }
 
-export default function BuscaClientePedido({ clienteSelecionadoId, onSelecionarCliente, onNovoCliente }: BuscaClienteProps) {
-    const [clientes, setClientes] = useState<ClienteProps[]>([])
-    const [bairros, setBairros] = useState<BairroProps[]>([])
+export default function BuscaClientePedido({ clienteSelecionadoId, onSelecionarCliente, onNovoCliente, atualizarLista = 0 }: BuscaClienteProps) {
+    const [clientes, setClientes] = useState<ClienteLocal[]>([])
     const [termoBusca, setTermoBusca] = useState("")
     const [aberto, setAberto] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
@@ -54,14 +40,9 @@ export default function BuscaClientePedido({ clienteSelecionadoId, onSelecionarC
     useEffect(() => {
         async function carregarDados() {
             try {
-                const [resClientes, resBairros] = await Promise.all([
-                    Axios.get<ClienteProps[]>("/json/clientes.json"),
-                    Axios.get<BairroProps[]>("/json/bairros.json")
-                ])
-                setClientes(resClientes.data)
-                setBairros(resBairros.data)
-            } catch (erro) {
-                console.log(erro)
+                setClientes(await obterClientes())
+            } catch (erro: unknown) {
+                console.error("Não foi possível carregar os clientes para o pedido.", erro)
             }
         }
         carregarDados()
@@ -74,16 +55,12 @@ export default function BuscaClientePedido({ clienteSelecionadoId, onSelecionarC
         }
         document.addEventListener("mousedown", handleClickFora)
         return () => document.removeEventListener("mousedown", handleClickFora)
-    }, [])
+    }, [atualizarLista])
 
     const clienteAtual = clientes.find(c => c.idCliente === clienteSelecionadoId)
 
-    function obterNomeBairro(idBairro: number) {
-        const b = bairros.find(item => item.idBairro === idBairro)
-        return b ? b.nome : ""
-    }
-
-    const clientesFiltrados = clientes.filter(c => {
+    const clientesAtivos = clientes.filter((cliente) => cliente.status === "Ativo")
+    const clientesFiltrados = clientesAtivos.filter(c => {
         const termo = termoBusca.toLowerCase()
         return c.nome.toLowerCase().includes(termo) || c.telefone.toLowerCase().includes(termo)
     })
@@ -140,7 +117,7 @@ export default function BuscaClientePedido({ clienteSelecionadoId, onSelecionarC
                                 <div
                                     key={cliente.idCliente}
                                     onClick={() => {
-                                        onSelecionarCliente(cliente.idCliente)
+                                        onSelecionarCliente(cliente)
                                         setAberto(false)
                                         setTermoBusca("")
                                     }}
@@ -185,7 +162,7 @@ export default function BuscaClientePedido({ clienteSelecionadoId, onSelecionarC
                         <FontAwesomeIcon icon={faLocationDot} className="text-slate-400 mt-0.5" />
                         <div className="flex min-w-0 flex-col">
                             <span className="font-medium text-slate-800">{clienteAtual.endereco}</span>
-                            <span className="text-slate-400">{obterNomeBairro(clienteAtual.idBairro)} - SP</span>
+                            <span className="text-slate-400">{clienteAtual.bairro} - SP</span>
                         </div>
                     </div>
                 </div>

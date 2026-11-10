@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowTrendUp,
@@ -13,37 +12,9 @@ import {
   faTruck,
   faWallet,
 } from "@fortawesome/free-solid-svg-icons";
-import { obterPedidos } from "../lib/pedidos";
+import { obterPedidos, type PedidoLocal } from "../lib/pedidos";
 import { exportarCsv } from "../lib/exportarCsv";
-
-interface ClienteJson {
-  idCliente: number;
-  nome: string;
-}
-
-interface PedidoJson {
-  idPedido: number;
-  idCliente: number;
-  dataPedido: string;
-  total: number;
-  formaPagamento: string;
-  tipoEntrega: string;
-  status: string;
-  itens?: Array<{
-    tipo?: string;
-    nome?: string;
-    quantidade?: number;
-    precoTotalItem?: number;
-  }>;
-}
-
-interface CardapioJson {
-  idItem: number;
-  idCategoria: number;
-  nome: string;
-  preco: number;
-  descricao: string;
-}
+import { obterClientes, obterProdutos, type ClienteLocal, type ProdutoLocal } from "../lib/database";
 
 interface RelatoriosProps {
   onVerTodosPedidos: () => void
@@ -54,9 +25,9 @@ const formatCurrency = (valor: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
 
 export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: RelatoriosProps) {
-  const [pedidos, setPedidos] = useState<PedidoJson[]>([]);
-  const [clientes, setClientes] = useState<ClienteJson[]>([]);
-  const [cardapio, setCardapio] = useState<CardapioJson[]>([]);
+  const [pedidos, setPedidos] = useState<PedidoLocal[]>([]);
+  const [clientes, setClientes] = useState<ClienteLocal[]>([]);
+  const [cardapio, setCardapio] = useState<ProdutoLocal[]>([]);
   const [periodoFiltro, setPeriodoFiltro] = useState("todos");
 
   useEffect(() => {
@@ -64,15 +35,15 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
       try {
         const [pedidosResponse, clientesResponse, cardapioResponse] = await Promise.all([
           obterPedidos(),
-          Axios.get<ClienteJson[]>("/json/clientes.json"),
-          Axios.get<CardapioJson[]>("/json/cardapio.json"),
+          obterClientes(),
+          obterProdutos(),
         ]);
 
         setPedidos(pedidosResponse);
-        setClientes(clientesResponse.data);
-        setCardapio(cardapioResponse.data);
+        setClientes(clientesResponse);
+        setCardapio(cardapioResponse);
       } catch (erro) {
-        console.log(erro);
+        console.error("Não foi possível carregar os relatórios.", erro);
       }
     }
 
@@ -161,13 +132,7 @@ export default function Relatorios({ onVerTodosPedidos, onVerProdutos }: Relator
     ];
 
     cardapio.forEach((item) => {
-      const indice = categorias.findIndex((categoria) => categoria.nome === {
-        1: "Pizzas",
-        2: "Bebidas",
-        3: "Sobremesas",
-        4: "Bordas",
-        5: "Adicionais",
-      }[item.idCategoria]);
+      const indice = categorias.findIndex((categoria) => categoria.nome === item.categoria);
 
       if (indice >= 0) {
         categorias[indice].valor += Number(item.preco || 0);
