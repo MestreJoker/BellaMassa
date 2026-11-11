@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faArrowLeft, faCalendarAlt, faClock } from "@fortawesome/free-solid-svg-icons"
 import BuscaClientePedido from "../Components/BuscaClientePedido"
@@ -9,7 +9,7 @@ import CheckoutPedido from "../Components/CheckoutPedido"
 import CatalogoProdutos from "../Components/CatalogoProdutos"
 import ModalNovoCliente from "../Components/ModalNovoCliente"
 import { criarPedido } from "../lib/pedidos"
-import { type ClienteLocal, type ProdutoLocal } from "../lib/database"
+import { obterTaxaEntrega, type ClienteLocal, type ProdutoLocal } from "../lib/database"
 
 interface ItemCarrinho {
     id: number | string
@@ -28,11 +28,21 @@ export default function Pedido({ onVoltarPedidos }: PedidoProps) {
     const [clienteId, setClienteId] = useState<number>(0)
     const [clienteEndereco, setClienteEndereco] = useState("")
     const [itensCarrinho, setItensCarrinho] = useState<ItemCarrinho[]>([])
-    const taxaEntrega = 7
+    const [taxaEntrega, setTaxaEntrega] = useState<number | null>(null)
+    const [erroTaxaEntrega, setErroTaxaEntrega] = useState("")
     const [tipoEntrega, setTipoEntrega] = useState("")
     const [mensagemPedido, setMensagemPedido] = useState("")
     const [modalNovoClienteAberto, setModalNovoClienteAberto] = useState(false)
     const [clientesAtualizacao, setClientesAtualizacao] = useState(0)
+
+    useEffect(() => {
+        obterTaxaEntrega()
+            .then(setTaxaEntrega)
+            .catch((erro) => {
+                console.error("Não foi possível carregar a taxa de entrega.", erro)
+                setErroTaxaEntrega("Não foi possível carregar a taxa de entrega. Atualize a tela antes de confirmar pedidos.")
+            })
+    }, [])
 
     function adicionarItemGenerico(item: ProdutoLocal) {
         const itemExistente = itensCarrinho.find((carrinho) => carrinho.id === item.idItem && carrinho.idProduto === item.idItem)
@@ -85,6 +95,10 @@ export default function Pedido({ onVoltarPedidos }: PedidoProps) {
             setMensagemPedido("Selecione um cliente antes de confirmar o pedido.")
             return
         }
+        if (taxaEntrega === null) {
+            setMensagemPedido(erroTaxaEntrega || "Aguarde o carregamento das configurações da loja.")
+            return
+        }
         if (!dadosCheckout.tipoEntrega || !dadosCheckout.formaPagamento) {
             setMensagemPedido("Escolha entrega ou retirada e uma forma de pagamento.")
             return
@@ -131,6 +145,8 @@ export default function Pedido({ onVoltarPedidos }: PedidoProps) {
                     </div>
                 </div>
 
+                {erroTaxaEntrega && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erroTaxaEntrega}</p>}
+
                 <div className="flex flex-wrap items-center gap-3 self-start rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600 sm:gap-6 sm:px-4 md:self-auto">
                     <div className="flex items-center gap-2">
                         <FontAwesomeIcon icon={faCalendarAlt} className="text-xs text-slate-400" />
@@ -165,7 +181,7 @@ export default function Pedido({ onVoltarPedidos }: PedidoProps) {
                         onRemoverItem={removerItem}
                         onLimparCarrinho={limparCarrinho}
                         subtotal={subtotal}
-                        taxaEntrega={tipoEntrega === "Entrega" && itensCarrinho.length > 0 ? taxaEntrega : 0}
+                        taxaEntrega={tipoEntrega === "Entrega" && itensCarrinho.length > 0 ? taxaEntrega ?? 0 : 0}
                     />
                     <CheckoutPedido onConfirmarPedido={confirmarPedido} onTipoEntregaChange={setTipoEntrega} />
                     {mensagemPedido && (

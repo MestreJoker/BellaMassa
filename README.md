@@ -40,11 +40,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 O esquema simples esta em `sql/00_banco_completo.sql`. Ele cria perfis da
 equipe, categorias, produtos, clientes, pedidos e itens do pedido. Os precos
 ficam diretamente em `produtos`; enderecos ficam em `clientes`.
-O script cria categorias iniciais, mas nao inventa produtos. Administradores
-podem cadastrar categorias e produtos na tela **Cardapio**; operadores podem
-consultar o catalogo, cadastrar clientes e operar pedidos. O banco tambem
-restringe essas permissoes com RLS. Cadastre sabores/tamanhos como produtos
-separados. A taxa de entrega e validada pelo banco e fixa em R$ 7,00.
+O script cria categorias iniciais e uma configuracao inicial de taxa de entrega
+de R$ 7,00, mas nao inventa produtos. Administradores podem gerenciar
+categorias e produtos, criar/desativar usuarios da equipe e alterar a taxa na
+tela **Administracao**. Operadores podem consultar o catalogo, cadastrar
+clientes e operar pedidos. O banco aplica as permissoes com RLS e a taxa
+configurada e aplicada aos proximos pedidos. Cadastre sabores/tamanhos como
+produtos separados.
 
 ### Instalar ou reiniciar o esquema
 
@@ -58,12 +60,27 @@ precisam ser recriados. Confirme o projeto e salve os dados que quiser manter
 antes de executar. Se uma tabela fora da lista depender dessas tabelas, o
 script interrompe a execucao em vez de remove-la em cascata.**
 
+### Atualizar somente as configuracoes administrativas
+
+Se as tabelas da BellaMassa ja existem e voce nao quer apaga-las, execute
+`sql/01_configuracoes_admin.sql` no SQL Editor do Supabase. Essa migracao cria
+somente a tabela `configuracoes`, insere a taxa inicial de R$ 7,00 se ela ainda
+nao existir e configura as permissoes; ela nao apaga nem reinicializa dados.
+
+Para habilitar a edicao de nome, permissao e status dos usuarios internos,
+execute tambem `sql/02_admin_atualizar_perfil.sql`. Essa migracao cria somente
+a funcao usada por essa operacao e nao apaga tabelas nem dados existentes.
+
 ### Criar o primeiro usuario interno
 
-1. Em **Authentication > Settings**, desative novos cadastros (sign-ups).
-2. Crie o usuario em **Authentication > Users > Add user**, definindo e
-   confirmando o e-mail e a senha.
-3. No SQL Editor, crie o perfil e conceda acesso de administrador. Troque o
+1. Configure `SUPABASE_SERVICE_ROLE_KEY` no ambiente privado do servidor
+   (arquivo `.env.local` durante desenvolvimento). Use a chave `service_role`
+   do projeto correto do Supabase. Ela e necessaria para o endpoint seguro de
+   criacao e gerenciamento de contas internas; nunca use `NEXT_PUBLIC_` nela.
+2. Em **Authentication > Settings**, desative novos cadastros (sign-ups).
+3. Crie o primeiro usuario em **Authentication > Users > Add user**, definindo
+   e confirmando o e-mail e a senha.
+4. No SQL Editor, crie o perfil e conceda acesso de administrador. Troque o
    e-mail pelo usuario criado:
 
    ```sql
@@ -87,6 +104,9 @@ Para criar um operador, repita o procedimento com `FALSE` no lugar de `TRUE`.
 O perfil precisa existir para que o login tenha acesso ao sistema. Nunca grave
 senhas em `public.perfis` nem as insira por SQL: o Supabase Auth gerencia as
 credenciais. O banco guarda somente o nome, e-mail e indicador de administrador.
+Depois do primeiro acesso, administradores podem criar os demais usuarios,
+alterar seus niveis de acesso, renomea-los ou desativar/reativar suas contas na
+tela **Administracao**. O sistema impede remover o ultimo administrador ativo.
 
 ### Recuperar senha
 
@@ -104,6 +124,7 @@ Configure `.env.local` na raiz do projeto com a URL e a chave publica
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sua-chave-publica
+   SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role-privada
    ```
 
 Instale as dependencias e inicie o aplicativo:
@@ -116,5 +137,5 @@ Instale as dependencias e inicie o aplicativo:
 Entre em `/` com o e-mail e a senha cadastrados no Supabase Auth.
 
 Nunca coloque a chave `service_role` em variavel `NEXT_PUBLIC_*`, no navegador
-ou no repositorio: ela ignora as politicas RLS. As senhas devem ser geridas pelo
-Supabase Auth.
+ou no repositorio: ela ignora as politicas RLS. Ela deve existir somente no
+ambiente privado do servidor. As senhas devem ser geridas pelo Supabase Auth.

@@ -15,6 +15,7 @@ export interface CategoriaLocal {
     idCategoria: number
     nome: string
     ordem: number
+    ativo: boolean
 }
 
 export interface ProdutoLocal {
@@ -168,33 +169,50 @@ export async function atualizarStatusCliente(idCliente: number, ativo: boolean):
     lancarErroBanco("atualizar status do cliente", error)
 }
 
-export async function obterCategorias(): Promise<CategoriaLocal[]> {
-    const { data, error } = await supabase
+export async function obterCategorias(incluirInativas = false): Promise<CategoriaLocal[]> {
+    let consulta = supabase
         .from("categorias")
-        .select("id_categoria, nome, ordem")
-        .eq("ativo", true)
+        .select("id_categoria, nome, ordem, ativo")
         .order("ordem")
         .order("nome")
+    if (!incluirInativas) consulta = consulta.eq("ativo", true)
+    const { data, error } = await consulta
 
     lancarErroBanco("carregar categorias", error)
     return (data ?? []).map((categoria) => ({
         idCategoria: Number(categoria.id_categoria),
         nome: categoria.nome,
         ordem: categoria.ordem,
+        ativo: categoria.ativo,
     }))
 }
 
 export async function criarCategoria(nome: string): Promise<CategoriaLocal> {
-    const categorias = await obterCategorias()
+    const categorias = await obterCategorias(true)
     const { data, error } = await supabase
         .from("categorias")
         .insert({ nome: nome.trim(), ordem: categorias.length + 1 })
-        .select("id_categoria, nome, ordem")
+        .select("id_categoria, nome, ordem, ativo")
         .single()
 
     lancarErroBanco("criar categoria", error)
     if (!data) throw new Error("O Supabase não retornou a categoria criada.")
-    return { idCategoria: Number(data.id_categoria), nome: data.nome, ordem: data.ordem }
+    return { idCategoria: Number(data.id_categoria), nome: data.nome, ordem: data.ordem, ativo: data.ativo }
+}
+
+export async function atualizarCategoria(
+    idCategoria: number,
+    alteracoes: Pick<CategoriaLocal, "nome" | "ordem" | "ativo">,
+): Promise<void> {
+    const { error } = await supabase
+        .from("categorias")
+        .update({
+            nome: alteracoes.nome.trim(),
+            ordem: alteracoes.ordem,
+            ativo: alteracoes.ativo,
+        })
+        .eq("id_categoria", idCategoria)
+    lancarErroBanco("atualizar categoria", error)
 }
 
 export async function criarProduto(dados: {
@@ -214,11 +232,15 @@ export async function criarProduto(dados: {
     lancarErroBanco("cadastrar produto", error)
 }
 
-export async function obterProdutos(): Promise<ProdutoLocal[]> {
-    const { data, error } = await supabase
+export async function obterProdutos(incluirInativos = true): Promise<ProdutoLocal[]> {
+    let consulta = supabase
         .from("produtos")
         .select("id_produto, id_categoria, nome, descricao, imagem_url, tipo, preco, destaque, ativo, categorias(nome)")
         .order("nome")
+    if (!incluirInativos) {
+        consulta = consulta.eq("ativo", true).eq("categorias.ativo", true)
+    }
+    const { data, error } = await consulta
 
     lancarErroBanco("carregar catálogo", error)
     return (data ?? []).map((produto) => {
@@ -240,9 +262,12 @@ export async function obterProdutos(): Promise<ProdutoLocal[]> {
 
 export async function atualizarProduto(
     idProduto: number,
-    alteracoes: Partial<Pick<ProdutoLocal, "descricao" | "destaque" | "ativo" | "preco">>,
+    alteracoes: Partial<Pick<ProdutoLocal, "nome" | "idCategoria" | "tipo" | "descricao" | "destaque" | "ativo" | "preco">>,
 ): Promise<void> {
     const atualizacao: Record<string, unknown> = {}
+    if (alteracoes.nome !== undefined) atualizacao.nome = alteracoes.nome.trim()
+    if (alteracoes.idCategoria !== undefined) atualizacao.id_categoria = alteracoes.idCategoria
+    if (alteracoes.tipo !== undefined) atualizacao.tipo = alteracoes.tipo
     if (alteracoes.descricao !== undefined) atualizacao.descricao = alteracoes.descricao
     if (alteracoes.destaque !== undefined) atualizacao.destaque = alteracoes.destaque
     if (alteracoes.ativo !== undefined) atualizacao.ativo = alteracoes.ativo
@@ -252,6 +277,17 @@ export async function atualizarProduto(
 
     const { error } = await supabase.from("produtos").update(atualizacao).eq("id_produto", idProduto)
     lancarErroBanco("atualizar produto", error)
+}
+
+export async function obterTaxaEntrega(): Promise<number> {
+    const { data, error } = await supabase
+        .from("configuracoes")
+        .select("taxa_entrega")
+        .eq("chave", "geral")
+        .single()
+    lancarErroBanco("carregar a taxa de entrega", error)
+    if (!data) throw new Error("A taxa de entrega não está configurada.")
+    return Number(data.taxa_entrega)
 }
 
 export async function atualizarStatusPedido(idPedido: number, status: StatusPedidoLocal): Promise<void> {

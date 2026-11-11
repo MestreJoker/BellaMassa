@@ -11,6 +11,7 @@ import Cardapio from "./../Conteudo/Cardapio";
 import Entregas from "./../Conteudo/Entregas";
 import Pagamentos from "./../Conteudo/Pagamentos";
 import Relatorios from "./../Conteudo/Relatorios";
+import Administracao from "./../Conteudo/Administracao";
 import { encerrarSessao, obterUsuarioSessao } from "./../lib/sessao";
 import {
   assinarNavegacaoPainel,
@@ -33,6 +34,7 @@ export default function Home() {
   const [menuMobileAberto, setMenuMobileAberto] = useState(false)
   const [verificandoAcesso, setVerificandoAcesso] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [userId, setUserId] = useState("")
 
   useEffect(() => {
     let ativo = true
@@ -45,7 +47,10 @@ export default function Home() {
           router.replace("/")
           return
         }
+        setUserId(usuario.id)
         setIsAdmin(usuario.isAdmin)
+        const paginaSalva = Number(obterEstadoNavegacaoPainel().split(":")[0])
+        if (!usuario.isAdmin && paginaSalva >= 6) salvarNavegacaoPainel(0, false)
         setVerificandoAcesso(false)
       })
       .catch((erro: unknown) => {
@@ -79,6 +84,7 @@ export default function Home() {
         informarPaginaAtual={receberPaginaAtual}
         menuMobileAberto={menuMobileAberto}
         fecharMenuMobile={() => setMenuMobileAberto(false)}
+        isAdmin={isAdmin}
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Header alternarMenuMobile={() => setMenuMobileAberto((aberto) => !aberto)} onSair={() => { void sair() }} />
@@ -91,7 +97,8 @@ export default function Home() {
             {paginaAtual == 3 && <Cardapio isAdmin={isAdmin} />}
             {paginaAtual == 4 && <Entregas />}
             {paginaAtual == 5 && <Pagamentos />}
-            {paginaAtual == 6 && <Relatorios onVerTodosPedidos={() => receberPaginaAtual(1)} onVerProdutos={() => receberPaginaAtual(3)} />}
+            {paginaAtual == 6 && isAdmin && <Relatorios onVerTodosPedidos={() => receberPaginaAtual(1)} onVerProdutos={() => receberPaginaAtual(3)} />}
+            {paginaAtual == 7 && isAdmin && <Administracao userId={userId} />}
         </main>
       </div>
     </div>

@@ -18,12 +18,12 @@ export async function obterUsuarioSessao(): Promise<UsuarioSessao | null> {
 
     const { data: perfil, error } = await supabase
         .from("perfis")
-        .select("nome, is_admin")
+        .select("nome, is_admin, ativo")
         .eq("auth_user_id", usuarioData.user.id)
         .maybeSingle()
 
     if (error) throw error
-    if (!perfil) return null
+    if (!perfil?.ativo) return null
 
     return {
         id: usuarioData.user.id,

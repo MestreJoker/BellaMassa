@@ -50,7 +50,8 @@ BEGIN
           AND p.proname IN (
               'criar_cliente', 'criar_pedido', 'criar_perfil_auth',
               'registrar_historico_status_pedido', 'usuario_equipe',
-              'usuario_admin', 'atualizar_timestamp', 'marcar_pedido_pago'
+              'usuario_admin', 'atualizar_timestamp', 'marcar_pedido_pago',
+              'admin_atualizar_perfil'
           )
     LOOP
         EXECUTE format('DROP FUNCTION %s', funcao.assinatura);
@@ -75,7 +76,14 @@ CREATE TABLE public.perfis (
     nome TEXT NOT NULL CHECK (length(btrim(nome)) > 0),
     email TEXT NOT NULL UNIQUE,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.configuracoes (
+    chave TEXT PRIMARY KEY CHECK (chave = 'geral'),
+    taxa_entrega NUMERIC(10, 2) NOT NULL DEFAULT 7 CHECK (taxa_entrega >= 0),
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Categorias e produtos com preco diretamente no produto.
@@ -161,6 +169,7 @@ AS $$
         SELECT 1
         FROM public.perfis p
         WHERE p.auth_user_id = (SELECT auth.uid())
+          AND p.ativo
     );
 $$;
 
@@ -175,6 +184,7 @@ AS $$
         SELECT 1
         FROM public.perfis p
         WHERE p.auth_user_id = (SELECT auth.uid())
+          AND p.ativo
           AND p.is_admin
     );
 $$;
@@ -186,6 +196,7 @@ GRANT EXECUTE ON FUNCTION public.usuario_admin() TO authenticated;
 
 -- RLS: nao basta estar autenticado; e necessario ter perfil interno.
 ALTER TABLE public.perfis ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.configuracoes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categorias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.produtos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clientes ENABLE ROW LEVEL SECURITY;
@@ -195,6 +206,14 @@ ALTER TABLE public.pedido_itens ENABLE ROW LEVEL SECURITY;
 CREATE POLICY perfil_proprio_ou_admin
     ON public.perfis FOR SELECT TO authenticated
     USING (auth_user_id = (SELECT auth.uid()) OR (SELECT public.usuario_admin()));
+
+CREATE POLICY configuracoes_leitura_equipe
+    ON public.configuracoes FOR SELECT TO authenticated
+    USING ((SELECT public.usuario_equipe()));
+CREATE POLICY configuracoes_admin
+    ON public.configuracoes FOR UPDATE TO authenticated
+    USING ((SELECT public.usuario_admin()))
+    WITH CHECK ((SELECT public.usuario_admin()));
 
 CREATE POLICY categorias_leitura_equipe
     ON public.categorias FOR SELECT TO authenticated
@@ -227,9 +246,10 @@ CREATE POLICY pedido_itens_equipe
     USING ((SELECT public.usuario_equipe()))
     WITH CHECK ((SELECT public.usuario_equipe()));
 
-REVOKE ALL ON public.perfis, public.categorias, public.produtos,
+REVOKE ALL ON public.perfis, public.configuracoes, public.categorias, public.produtos,
     public.clientes, public.pedidos, public.pedido_itens FROM anon, authenticated;
 GRANT SELECT ON public.perfis TO authenticated;
+GRANT SELECT, UPDATE ON public.configuracoes TO authenticated;
 GRANT SELECT ON public.categorias, public.produtos TO authenticated;
 GRANT INSERT, UPDATE ON public.categorias, public.produtos TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.clientes TO authenticated;
@@ -301,7 +321,13 @@ BEGIN
         IF NULLIF(v_endereco, '') IS NULL THEN
             RAISE EXCEPTION 'O cliente precisa ter endereco cadastrado para entrega.';
         END IF;
-        v_taxa_entrega := 7;
+        SELECT c.taxa_entrega
+        INTO v_taxa_entrega
+        FROM public.configuracoes AS c
+        WHERE c.chave = 'geral';
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'A taxa de entrega nao foi configurada.';
+        END IF;
     END IF;
 
     INSERT INTO public.pedidos (
@@ -350,6 +376,51 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.admin_atualizar_perfil(
+    p_auth_user_id UUID,
+    p_nome TEXT,
+    p_is_admin BOOLEAN,
+    p_ativo BOOLEAN
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_atual public.perfis%ROWTYPE;
+BEGIN
+    LOCK TABLE public.perfis IN EXCLUSIVE MODE;
+    SELECT * INTO v_atual
+    FROM public.perfis
+    WHERE auth_user_id = p_auth_user_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Usuario interno nao encontrado.';
+    END IF;
+    IF NULLIF(btrim(p_nome), '') IS NULL THEN
+        RAISE EXCEPTION 'O nome do usuario e obrigatorio.';
+    END IF;
+    IF v_atual.is_admin AND v_atual.ativo AND NOT (p_is_admin AND p_ativo)
+       AND NOT EXISTS (
+           SELECT 1
+           FROM public.perfis
+           WHERE is_admin AND ativo AND auth_user_id <> p_auth_user_id
+       ) THEN
+        RAISE EXCEPTION 'Nao e permitido desativar ou rebaixar o ultimo administrador ativo.';
+    END IF;
+
+    UPDATE public.perfis
+    SET nome = btrim(p_nome),
+        is_admin = p_is_admin,
+        ativo = p_ativo
+    WHERE auth_user_id = p_auth_user_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_atualizar_perfil(UUID, TEXT, BOOLEAN, BOOLEAN) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_atualizar_perfil(UUID, TEXT, BOOLEAN, BOOLEAN) TO service_role;
+
 CREATE OR REPLACE FUNCTION public.marcar_pedido_pago(p_id_pedido BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -386,3 +457,7 @@ INSERT INTO public.categorias (nome, ordem) VALUES
     ('Bordas', 4),
     ('Adicionais', 5)
 ON CONFLICT (nome) DO NOTHING;
+
+INSERT INTO public.configuracoes (chave, taxa_entrega)
+VALUES ('geral', 7.00)
+ON CONFLICT (chave) DO NOTHING;

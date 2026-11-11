@@ -6,7 +6,7 @@ let estadoMemoria = ESTADO_INICIAL
 function normalizarEstado(estado: string): string {
     const [pagina, criandoPedido] = estado.split(":")
     const indicePagina = Number(pagina)
-    if (!Number.isInteger(indicePagina) || indicePagina < 0 || indicePagina > 6) return ESTADO_INICIAL
+    if (!Number.isInteger(indicePagina) || indicePagina < 0 || indicePagina > 7) return ESTADO_INICIAL
     return `${indicePagina}:${indicePagina === 1 && criandoPedido === "true"}`
 }
 

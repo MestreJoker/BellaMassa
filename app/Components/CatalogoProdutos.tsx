@@ -22,7 +22,7 @@ export default function CatalogoProdutos({ onAdicionarItem }: CatalogoProdutosPr
     useEffect(() => {
         async function carregarCardapio() {
             try {
-                const [categoriasBanco, produtosBanco] = await Promise.all([obterCategorias(), obterProdutos()])
+                const [categoriasBanco, produtosBanco] = await Promise.all([obterCategorias(), obterProdutos(false)])
                 setCategorias(categoriasBanco)
                 setItens(produtosBanco.filter((produto) => produto.ativo))
                 setCategoriaAtiva(categoriasBanco[0]?.idCategoria ?? null)

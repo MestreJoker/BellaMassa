@@ -22,6 +22,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import {
     atualizarProduto as atualizarProdutoBanco,
+    atualizarCategoria as atualizarCategoriaBanco,
     criarCategoria,
     criarProduto,
     obterCategorias,
@@ -43,6 +44,9 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
     const [novoPreco, setNovoPreco] = useState("");
     const [novoTipo, setNovoTipo] = useState<ProdutoLocal["tipo"]>("pizza");
     const [novaCategoriaId, setNovaCategoriaId] = useState(0);
+    const [nomeEditado, setNomeEditado] = useState("");
+    const [categoriaEditada, setCategoriaEditada] = useState(0);
+    const [tipoEditado, setTipoEditado] = useState<ProdutoLocal["tipo"]>("outro");
     const [precoEditado, setPrecoEditado] = useState("");
     const [descricaoEditada, setDescricaoEditada] = useState("");
     const [destaqueEditado, setDestaqueEditado] = useState(false);
@@ -69,7 +73,7 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
     useEffect(() => {
         async function carregarCardapio() {
             try {
-                const [itensCarregados, categoriasCarregadas] = await Promise.all([obterProdutos(), obterCategorias()]);
+                const [itensCarregados, categoriasCarregadas] = await Promise.all([obterProdutos(isAdmin), obterCategorias(isAdmin)]);
                 setItens(itensCarregados);
                 setCategoriasBanco(categoriasCarregadas);
                 setProdutoSelecionadoId(itensCarregados[0]?.idItem ?? null);
@@ -83,7 +87,30 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
         }
 
         carregarCardapio();
-    }, []);
+    }, [isAdmin]);
+
+    async function editarCategoria(categoria: CategoriaLocal) {
+        const nome = window.prompt("Nome da categoria", categoria.nome)?.trim();
+        if (!nome || nome === categoria.nome) return;
+        try {
+            await atualizarCategoriaBanco(categoria.idCategoria, { ...categoria, nome });
+            setCategoriasBanco(await obterCategorias(isAdmin));
+        } catch (erro) {
+            console.error("Não foi possível renomear a categoria.", erro);
+            setErroBanco("Não foi possível renomear a categoria. Confira se já existe uma categoria com esse nome.");
+        }
+    }
+
+    async function alternarCategoria(categoria: CategoriaLocal) {
+        try {
+            await atualizarCategoriaBanco(categoria.idCategoria, { ...categoria, ativo: !categoria.ativo });
+            setCategoriasBanco(await obterCategorias(isAdmin));
+            setItens(await obterProdutos(isAdmin));
+        } catch (erro) {
+            console.error("Não foi possível alterar a categoria.", erro);
+            setErroBanco("Não foi possível alterar a categoria. Tente novamente.");
+        }
+    }
 
     const itensFiltrados = useMemo(() => {
         const termo = busca.trim().toLowerCase();
@@ -106,7 +133,7 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
         setErroBanco("");
         try {
             await atualizarProdutoBanco(idItem, alteracoes);
-            setItens(await obterProdutos());
+            setItens(await obterProdutos(isAdmin));
         } catch (erro) {
             console.error("Não foi possível salvar as alterações do produto.", erro);
             setErroBanco("Não foi possível salvar as alterações. Tente novamente.");
@@ -117,6 +144,9 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
     function abrirModalEdicao() {
         if (!produtoSelecionado) return;
         setPrecoEditado(produtoSelecionado.preco.toFixed(2).replace(".", ","));
+        setNomeEditado(produtoSelecionado.nome);
+        setCategoriaEditada(produtoSelecionado.idCategoria);
+        setTipoEditado(produtoSelecionado.tipo);
         setDescricaoEditada(produtoSelecionado.descricao);
         setDestaqueEditado(produtoSelecionado.destaque ?? produtoSelecionado.tipo === "pizza");
         setErroEdicao("");
@@ -136,6 +166,9 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
         setSalvando(true);
         try {
             await atualizarProduto(produtoSelecionado.idItem, {
+                nome: nomeEditado.trim(),
+                idCategoria: categoriaEditada,
+                tipo: tipoEditado,
                 preco: novoPreco,
                 descricao: descricaoEditada.trim(),
                 destaque: destaqueEditado,
@@ -197,7 +230,7 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
                 tipo: novoTipo,
                 preco,
             });
-            const produtosAtualizados = await obterProdutos();
+            const produtosAtualizados = await obterProdutos(isAdmin);
             setItens(produtosAtualizados);
             setProdutoSelecionadoId(
                 produtosAtualizados.find((produto) =>
@@ -482,6 +515,25 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
                     </div>
                 </div>
 
+                {isAdmin && <div className="mt-4 rounded-[18px] bg-white p-3 shadow-sm">
+                    <h3 className="text-sm font-bold text-[#1d2733]">Gerenciar categorias</h3>
+                    <div className="mt-3 space-y-2">
+                        {categoriasBanco.map((categoria) => (
+                            <div key={categoria.idCategoria} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 p-2">
+                                <span className={`min-w-0 truncate text-sm ${categoria.ativo ? "text-slate-700" : "text-slate-400"}`}>
+                                    {categoria.nome}{categoria.ativo ? "" : " (inativa)"}
+                                </span>
+                                <div className="flex shrink-0 gap-1">
+                                    <button type="button" onClick={() => { void editarCategoria(categoria) }} className="rounded px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50">Renomear</button>
+                                    <button type="button" onClick={() => { void alternarCategoria(categoria) }} className="rounded px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                                        {categoria.ativo ? "Desativar" : "Ativar"}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>}
+
                 {isAdmin && <button
                     type="button"
                     onClick={adicionarCategoria}
@@ -509,7 +561,7 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
                             <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
                                 Categoria
                                 <select value={novaCategoriaId} onChange={(evento) => setNovaCategoriaId(Number(evento.target.value))} required className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal">
-                                    {categoriasBanco.map((categoria) => <option key={categoria.idCategoria} value={categoria.idCategoria}>{categoria.nome}</option>)}
+                                    {categoriasBanco.filter((categoria) => categoria.ativo).map((categoria) => <option key={categoria.idCategoria} value={categoria.idCategoria}>{categoria.nome}</option>)}
                                 </select>
                             </label>
                             <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
@@ -572,6 +624,31 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
                         </div>
 
                         <form onSubmit={salvarEdicao} className="flex flex-col gap-4">
+                            <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
+                                Nome
+                                <input value={nomeEditado} onChange={(evento) => setNomeEditado(evento.target.value)} required maxLength={120} className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal" />
+                            </label>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
+                                    Categoria
+                                    <select value={categoriaEditada} onChange={(evento) => setCategoriaEditada(Number(evento.target.value))} className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal">
+                                        {categoriasBanco.filter((categoria) => categoria.ativo || categoria.idCategoria === produtoSelecionado.idCategoria).map((categoria) => (
+                                            <option key={categoria.idCategoria} value={categoria.idCategoria}>{categoria.nome}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
+                                    Tipo
+                                    <select value={tipoEditado} onChange={(evento) => setTipoEditado(evento.target.value as ProdutoLocal["tipo"])} className="rounded-lg border border-slate-200 px-3 py-2.5 font-normal">
+                                        <option value="pizza">Pizza</option>
+                                        <option value="bebida">Bebida</option>
+                                        <option value="sobremesa">Sobremesa</option>
+                                        <option value="borda">Borda</option>
+                                        <option value="adicional">Adicional</option>
+                                        <option value="outro">Outro</option>
+                                    </select>
+                                </label>
+                            </div>
                             <label className="flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
                                 Preço
                                 <div className="flex items-center rounded-lg border border-slate-200 px-3 focus-within:border-slate-400">
