@@ -83,7 +83,7 @@ export default function Login(){
     return(
         <LayoutLoginCadastro>
             <div className="m-auto w-full rounded-xl border border-gray-200 bg-white p-4 shadow-md sm:p-6 md:p-7">
-                <Image alt="logo" src={'/images/logoBellaMassaPreta.png'} width={300} height={100} className="mx-auto h-auto w-full max-w-75"/>
+                <Image alt="logo" src={'/images/logoBellaMassaVermelha.png'} width={230} height={99} className="mx-auto"/>
 
                 <h2 className="mt-4 text-xl font-extrabold sm:text-2xl">Acesse sua conta</h2>
                 <p className="text-sm text-gray-600 sm:text-base">Faça login para continuar no sistema</p>
