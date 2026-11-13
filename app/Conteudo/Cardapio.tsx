@@ -351,7 +351,7 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
                                 style={{
                                     backgroundImage: `
                                         linear-gradient(to bottom, rgba(9, 12, 18, 0.06), rgba(9, 12, 18, 0.22)),
-                                        url('/images/pizzaBackground.jpg')
+                                        url('${produto.imagem}')
                                     `,
                                     backgroundPosition: "center",
                                     backgroundSize: "cover",
@@ -426,7 +426,7 @@ export default function Cardapio({ isAdmin }: { isAdmin: boolean }) {
                                 </span>
                             </div>
 
-                            <div className="mt-4 h-28 rounded-2xl bg-slate-100" style={{ backgroundImage: `linear-gradient(to bottom, rgba(9, 12, 18, 0.06), rgba(9, 12, 18, 0.22)), url('/images/pizzaBackground.jpg')`, backgroundPosition: "center", backgroundSize: "cover" }} />
+                            <div className="mt-4 h-28 rounded-2xl bg-slate-100" style={{ backgroundImage: `linear-gradient(to bottom, rgba(9, 12, 18, 0.06), rgba(9, 12, 18, 0.22)), url('${produtoSelecionado.imagem}')`, backgroundPosition: "center", backgroundSize: "cover" }} />
 
                             <div className="mt-4 space-y-2 text-sm text-slate-600">
                                 <div className="flex items-center justify-between">

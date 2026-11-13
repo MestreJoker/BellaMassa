@@ -51,11 +51,10 @@ export default function CatalogoProdutos({ onAdicionarItem }: CatalogoProdutosPr
                         key={categoria.idCategoria}
                         type="button"
                         onClick={() => setCategoriaAtiva(categoria.idCategoria)}
-                        className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
-                            categoriaAtiva === categoria.idCategoria
+                        className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${categoriaAtiva === categoria.idCategoria
                                 ? "bg-rose-600 text-white shadow-sm"
                                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
+                            }`}
                     >
                         <FontAwesomeIcon icon={iconesCategoria[index] ?? faCircleDot} className="text-xs" />
                         {categoria.nome}
@@ -87,8 +86,13 @@ export default function CatalogoProdutos({ onAdicionarItem }: CatalogoProdutosPr
                     itensFiltrados.map((item) => (
                         <div key={item.idItem} className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md sm:p-4">
                             <div>
-                                <div className="mb-3 flex h-32 w-full items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                                    <span className="text-xs font-bold uppercase text-slate-400">{item.nome}</span>
+                                <div className="mb-3 h-32 w-full overflow-hidden rounded-lg bg-slate-100">
+                                    <div
+                                        className="h-full w-full bg-cover bg-center rounded-lg"
+                                        style={{
+                                            backgroundImage: `linear-gradient(to bottom, rgba(9, 12, 18, 0.06), rgba(9, 12, 18, 0.22)), url('${item.imagem}')`
+                                        }}
+                                    />
                                 </div>
                                 <h4 className="mb-1 text-sm font-bold text-slate-800">{item.nome}</h4>
                                 <p className="mb-4 line-clamp-2 text-xs text-slate-500">{item.descricao}</p>
