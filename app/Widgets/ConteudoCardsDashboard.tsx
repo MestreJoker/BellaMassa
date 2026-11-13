@@ -1,4 +1,4 @@
-import { faCar, faClock, faLocationDot, faPhone, faUser } from "@fortawesome/free-solid-svg-icons"
+import { faCheck, faClock, faFire, faLocationDot, faPhone, faTruck, faUser, faClipboardList } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import CardDashboard from "../Components/CardDahsboard"
 
@@ -21,22 +21,22 @@ interface ConteudoCardsDashboardProps {
 export default function ConteudoCardsDashboard(props: ConteudoCardsDashboardProps) {
     const dashboardCards = [
         {
-            icone: <FontAwesomeIcon icon={faCar} />,
+            icone: <FontAwesomeIcon icon={faClipboardList} />,
             texto: "Pedidos hoje",
             valor: props.dashboardStats?.pedidosHoje ?? 12,
         },
         {
-            icone: <FontAwesomeIcon icon={faCar} />,
+            icone: <FontAwesomeIcon icon={faFire} />,
             texto: "Em preparo",
             valor: props.dashboardStats?.emPreparo ?? 5,
         },
         {
-            icone: <FontAwesomeIcon icon={faCar} />,
+            icone: <FontAwesomeIcon icon={faCheck} />,
             texto: "Prontos",
             valor: props.dashboardStats?.prontos ?? 3,
         },
         {
-            icone: <FontAwesomeIcon icon={faCar} />,
+            icone: <FontAwesomeIcon icon={faTruck} />,
             texto: "Em entrega",
             valor: props.dashboardStats?.emEntrega ?? 4,
         },
